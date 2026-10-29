@@ -1,0 +1,1617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
+    <title>Command Dashboard</title>
+
+    <!-- Supabase SDK CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Netlify-Optimized PWA Manifest -->
+    <link rel="manifest" href='data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22Command%20Dashboard%22%2C%22short_name%22%3A%22Dashboard%22%2C%22start_url%22%3A%22%2F%22%2C%22scope%22%3A%22%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23000000%22%2C%22theme_color%22%3A%22%23000000%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Crect%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%2300e5ff%22%2F%3E%3C%2Fsvg%3E%22%2C%22sizes%22%3A%22192x192%20512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D'>
+
+    <style>
+        :root {
+            --bg-color: #000000;
+            --surface-color: #111111;
+            --border-color: #222222;
+            --accent: #00e5ff;
+            --accent-dim: rgba(0, 229, 255, 0.15);
+            --text-main: #ffffff;
+            --text-muted: #888888;
+        }
+
+        body.light-mode {
+            --bg-color: #f4f4f6;
+            --surface-color: #ffffff;
+            --border-color: #d1d1d6;
+            --text-main: #111111;
+            --text-muted: #666666;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            max-width: 480px;
+            margin: 0 auto;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        @media (orientation: landscape) {
+            body {
+                max-width: 860px;
+            }
+            .grid-menu {
+                grid-template-columns: repeat(5, 1fr) !important;
+            }
+        }
+
+        header {
+            text-align: center;
+            padding: 16px 0 20px 0;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .dashboard-title {
+            font-size: 1.05rem;
+            letter-spacing: 3px;
+            color: var(--accent);
+            font-weight: 700;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+
+        .time-display {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            color: var(--text-main);
+        }
+
+        .date-display {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .daily-quote {
+            font-size: 0.8rem;
+            color: var(--accent);
+            font-style: italic;
+            margin-top: 10px;
+            padding: 0 10px;
+            line-height: 1.3;
+            opacity: 0.85;
+        }
+
+        .view {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+        }
+
+        .view.active {
+            display: flex;
+        }
+
+        .grid-menu {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            flex: 1;
+            align-content: start;
+            padding-bottom: 20px;
+        }
+
+        .menu-btn {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 18px 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: var(--text-main);
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-height: 110px;
+        }
+
+        .menu-btn:active {
+            background-color: var(--accent-dim);
+            border-color: var(--accent);
+            transform: scale(0.97);
+        }
+
+        .menu-icon svg {
+            width: 26px;
+            height: 26px;
+            stroke: var(--accent);
+            stroke-width: 2;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .view-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .view-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .back-btn {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .back-btn:active {
+            background: var(--border-color);
+        }
+
+        .content-card {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .matrix-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 8px 12px;
+            margin-bottom: 12px;
+        }
+
+        .month-nav {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .nav-arrow {
+            background: none;
+            border: none;
+            color: var(--accent);
+            font-size: 1.1rem;
+            cursor: pointer;
+            padding: 2px 6px;
+        }
+
+        .toolbar-btns {
+            display: flex;
+            gap: 6px;
+        }
+
+        .tool-btn {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .tool-btn.active-accent {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .habit-table {
+            border-collapse: collapse;
+            text-align: center;
+            font-size: 0.8rem;
+        }
+
+        .habit-table th, .habit-table td {
+            border: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        .habit-table th.day-col {
+            width: 32px;
+            height: 32px;
+            color: var(--text-muted);
+            font-weight: 600;
+            background: var(--bg-color);
+            font-size: 0.75rem;
+        }
+
+        .habit-table th.habit-header {
+            width: 36px;
+            height: 95px;
+            padding: 0;
+            position: relative;
+            background: var(--bg-color);
+        }
+
+        .habit-header span {
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            display: inline-block;
+            white-space: nowrap;
+            font-size: 0.75rem;
+            color: var(--accent);
+            font-weight: 600;
+            max-height: 85px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .grid-cell {
+            width: 36px;
+            height: 32px;
+            background: var(--bg-color);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .grid-cell.checked {
+            background: var(--accent);
+        }
+
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            text-align: center;
+        }
+
+        .cal-header-day {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            padding: 6px 0;
+        }
+
+        .cal-day {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            height: 42px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            font-size: 0.85rem;
+        }
+
+        .cal-day.empty {
+            background: transparent;
+            border: none;
+            cursor: default;
+        }
+
+        .cal-day.today {
+            border-color: var(--accent);
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .cal-day.selected {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+        }
+
+        .event-dot {
+            width: 4px;
+            height: 4px;
+            background: var(--accent);
+            border-radius: 50%;
+            margin-top: 3px;
+        }
+
+        .event-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+        }
+
+        .project-card, .gym-card, .book-card {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
+        .project-header-row, .gym-header-row, .book-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .project-title, .gym-title, .book-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .project-pct, .book-pct {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 6px;
+            background: var(--border-color);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+            margin-bottom: 10px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .task-item, .exercise-item, .meal-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+        }
+
+        .task-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-task {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background: var(--bg-color);
+        }
+
+        .checkbox-task.checked {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .checkbox-task.checked::after {
+            content: '✓';
+            color: #000;
+            font-weight: bold;
+            font-size: 0.75rem;
+        }
+
+        .photo-gallery {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .photo-thumb {
+            width: 100%;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .habit-controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        input[type="text"], input[type="password"], textarea {
+            width: 100%;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            color: var(--text-main);
+            font-size: 0.9rem;
+        }
+
+        input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
+            border-color: var(--accent);
+            outline: none;
+        }
+
+        .action-btn {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            padding: 0 16px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .action-btn:active {
+            opacity: 0.8;
+        }
+
+        .timer-display {
+            font-size: 3.5rem;
+            font-weight: 800;
+            text-align: center;
+            letter-spacing: -1px;
+            margin: 20px 0;
+            color: var(--accent);
+        }
+
+        .timer-btns {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="dashboard-title">Command Dashboard</div>
+        <div class="time-display" id="clock">00:00</div>
+        <div class="date-display" id="date">Loading...</div>
+        <div class="daily-quote" id="quote">"Loading daily focus..."</div>
+    </header>
+
+    <!-- AUTH VIEW -->
+    <div id="auth-view" class="view">
+        <div class="content-card" style="max-width: 400px; margin: 20px auto; text-align: center;">
+            <div class="dashboard-title" style="margin-bottom: 16px;">Cloud Sync Login</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Sign in to sync your dashboard across all your devices.</div>
+            <input type="text" id="auth-email" placeholder="Email address..." style="margin-bottom: 10px;">
+            <input type="password" id="auth-password" placeholder="Password..." style="margin-bottom: 15px;">
+            <div style="display: flex; gap: 8px;">
+                <button class="action-btn" style="flex: 1; padding: 12px;" onclick="handleLogin()">Sign In</button>
+                <button class="tool-btn" style="flex: 1; padding: 12px; border-color: var(--accent); color: var(--accent);" onclick="handleSignUp()">Sign Up</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- HOME / GRID MENU -->
+    <div id="home-view" class="view">
+        <div class="grid-menu">
+            <button class="menu-btn" onclick="switchView('habits-view')">
+                <span class="menu-icon">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                </span>
+                Habits
+            </button>
+            <button class="menu-btn" onclick="switchView('calendar-view')">
+                <span class="menu-icon">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </span>
+                Calendar
+            </button>
+            <button class="menu-btn" onclick="switchView('projects-view')">
+                <span class="menu-icon">
+                    <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                </span>
+                Projects
+            </button>
+            <button class="menu-btn" onclick="switchView('gym-view')">
+                <span class="menu-icon">
+                    <svg viewBox="0 0 24 24"><path d="M6.5 6.5h11M6.5 17.5h11M2 10h20M2 14h20M4 6h2v12H4zM18 6h2v12h-2z"/></svg>
+                </span>
+                Gym Plan
+            </button>
+            <button class="menu-btn" onclick="switchView('gym-stats-view')">
+                <span class="menu-icon">
+                    <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>
+                </span>
+                Gym Stats
+            </button>
+            <button class="menu-btn" onclick="switchView('calories-view')">
+                <span class="menu-icon">
+                    <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+                </span>
+                Calories
+            </button>
+            <button class="menu-btn" onclick="switchView('books-view')">
+                <span class="menu-icon">
+                    <svg viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5z"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                </span>
+                Book Tracker
+            </button>
+            <button class="menu-btn" onclick="switchView('notes-view')">
+                <span class="menu-icon">
+                    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                </span>
+                Quick Notes
+            </button>
+            <button class="menu-btn" onclick="switchView('pomodoro-view')">
+                <span class="menu-icon">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </span>
+                Focus Timer
+            </button>
+            <button class="menu-btn" onclick="switchView('settings-view')">
+                <span class="menu-icon">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                </span>
+                Settings
+            </button>
+        </div>
+    </div>
+
+    <!-- HABITS VIEW -->
+    <div id="habits-view" class="view">
+        <div class="view-header">
+            <div class="view-title">Habit Tracker Matrix</div>
+            <button class="back-btn" onclick="switchView('home-view')">Home Menu</button>
+        </div>
+
+        <div class="matrix-toolbar">
+            <div class="month-nav">
+                <button class="nav-arrow" onclick="changeHabitMonth(-1)">‹</button>
+                <span id="habit-month-label">October 2026</span>
+                <button class="nav-arrow" onclick="changeHabitMonth(1)">›</button>
+            </div>
+            <div class="toolbar-btns">
+                <button class="tool-btn" onclick="currentHabitMonth()">Current</button>
+                <button class="tool-btn active-accent" onclick="openHabitManager()">Edit Habits</button>
+            </div>
+        </div>
+
+        <div class="content-card" id="habit-input-container" style="display:none;">
+            <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Add New Habit</div>
+            <div class="habit-controls" style="margin-bottom: 0;">
+                <input type="text" id="new-habit-input" placeholder="Habit name...">
+                <button class="action-btn" onclick="addHabit()">Add</button>
+            </div>
+        </div>
+
+        <div class="content-card" style="overflow-x: auto;">
+            <div id="table-container" style="display: flex; justify-content: flex-start;"></div>
+        </div>
+    </div>
+
+    <!-- CALENDAR VIEW -->
+    <div id="calendar-view" class="view">
+        <div class="view-header">
+            <div class="view-title">Calendar & Events</div>
+            <button class="back-btn" onclick="switchView('home-view')">Home Menu</button>
+        </div>
+
+        <div class="matrix-toolbar">
+            <div class="month-nav">
+                <button class="nav-arrow" onclick="changeCalMonth(-1)">‹</button>
+                <span id="cal-month-label">October 2026</span>
+                <button class="nav-arrow" onclick="changeCalMonth(1)">›</button>
+            </div>
+            <div class="toolbar-btns">
+                <button class="tool-btn" onclick="currentCalMonth()">Current</button>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <div class="cal-grid" id="cal-header-row">
+                <div class="cal-header-day">Mo</div>
+                <div class="cal-header-day">Tu</div>
+                <div class="cal-header-day">We</div>
+                <div class="cal-header-day">Th</div>
+                <div class="cal-header-day">Fr</div>
+                <div class="cal-header-day">Sa</div>
+                <div class="cal-header-day">Su</div>
+            </div>
+            <div class="cal-grid" id="cal-days-grid" style="margin-top: 6px;"></div>
+        </div>
+
+        <div class="content-card">
+            <div id="selected-date-title" style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Select a date</div>
+            <div id="event-list-container">
+                <div style="color: var(--text-muted); font-size: 0.85rem;">No events scheduled for this day.</div>
+            </div>
+            <div class="habit-controls" style="margin-top: 12px; margin-bottom: 0;">
+                <input type="text" id="new-event-input" placeholder="Add event or note...">
+                <button class="action-btn" onclick="addEvent()">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROJECTS VIEW -->
+    <div id="projects-view" class="view">
+        <div id="projects-list-container">
+            <div class="view-header">
+                <div class="view-title">Active Projects</div>
+                <button class="back-btn" onclick="switchView('home-view')">Home Menu</button>
+            </div>
+
+            <div class="content-card">
+                <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Create New Project</div>
+                <input type="text" id="new-proj-title" placeholder="Project name..." style="margin-bottom: 8px;">
+                <input type="text" id="new-proj-desc" placeholder="Brief description..." style="margin-bottom: 8px;">
+                <button class="action-btn" style="width: 100%; padding: 10px;" onclick="addProject()">Add Project</button>
+            </div>
+
+            <div id="projects-cards-list"></div>
+        </div>
+
+        <div id="project-detail-container" style="display: none;">
+            <div class="view-header">
+                <div class="view-title" id="detail-proj-title">Project Detail</div>
+                <button class="back-btn" onclick="backToProjectsList()">Back to Projects</button>
+            </div>
+            <div class="content-card">
+                <div id="detail-proj-desc" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 10px;"></div>
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; font-weight: 700;">
+                    <span>Completion</span>
+                    <span id="detail-proj-pct" style="color: var(--accent);">0%</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="detail-proj-bar"></div>
+                </div>
+            </div>
+
+            <div class="content-card">
+                <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Tasks</div>
+                <div id="detail-tasks-list"></div>
+                <div class="habit-controls" style="margin-top: 10px; margin-bottom: 0;">
+                    <input type="text" id="new-task-input" placeholder="New task...">
+                    <button class="action-btn" onclick="addTask()">Add</button>
+                </div>
+            </div>
+
+            <div class="content-card">
+                <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Photos</div>
+                <input type="file" id="photo-file-input" accept="image/*" style="display:none;" onchange="handlePhotoUpload(event)">
+                <button class="action-btn" style="width:100%; padding:10px; margin-bottom: 8px;" onclick="document.getElementById('photo-file-input').click()">+ Attach Photo</button>
+                <div class="photo-gallery" id="detail-photo-gallery"></div>
+            </div>
+
+            <div class="content-card" style="text-align: center;">
+                <button class="tool-btn" style="color: red; border-color: red; width: 100%; padding: 8px;" onclick="deleteCurrentProject()">Delete Project</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GYM WORKOUT PLANNER VIEW -->
+    <div id="gym-view" class="view">
+        <div id="gym-list-container">
+            <div class="view-header">
+                <div class="view-title">Weekly Gym Plan</div>
+                <button class="back-btn" onclick="switchView('home-view')">Home Menu</button>
+            </div>
+
+            <div class="content-card">
+                <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Create Routine Day</div>
+                <input type="text" id="new-gym-title" placeholder="Routine Name (e.g., Push Day A)..." style="margin-bottom: 8px;">
+                <input type="text" id="new-gym-desc" placeholder="Target Muscle Groups..." style="margin-bottom: 8px;">
+                <button class="action-btn" style="width: 100%; padding: 10px;" onclick="addGymRoutine()">Add Routine</button>
+            </div>
+
+            <div id="gym-cards-list"></div>
+        </div>
+
+        <div id="gym-detail-container" style="display: none;">
+            <div class="view-header">
+                <div class="view-title" id="detail-gym-title">Routine Template</div>
+                <button class="back-btn" onclick="backToGymList()">Back to Plan</button>
+            </div>
+            <div class="content-card">
+                <div id="detail-gym-desc" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 12px;"></div>
+                <button class="action-btn" style="width: 100%; padding: 12px; font-weight: 700; margin-bottom: 4px;" onclick="startActiveWorkout()">⚡ Start Live Workout Session</button>
+            </div>
+
+            <div class="content-card">
+                <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Template Exercises</div>
+                <div id="detail-exercises-list"></div>
+                <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+                    <input type="text" id="new-ex-name" placeholder="Exercise name (e.g. Incline Bench Press)">
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="new-ex-sets" placeholder="Sets (e.g. 4)">
+                        <input type="text" id="new-ex-reps" placeholder="Target Reps (e.g. 8-10)">
+                        <input type="text" id="new-ex-weight" placeholder="Target Wt (e.g. 75kg)">
+                    </div>
+                    <button class="action-btn" style="width: 100%; padding: 10px;" onclick="addExerciseTemplate()">Add to Routine Template</button>
+                </div>
+            </div>
+
+            <div class="content-card" style="text-align: center;">
+                <button class="tool-btn" style="color: red; border-color: red; width: 100%; padding: 8px;" onclick="deleteCurrentGymRoutine()">Delete Routine</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ACTIVE WORKOUT SESSION LOGGER VIEW -->
+    <div id="gym-active-view" class="view">
+        <div class="view-header">
+            <div class="view-title" id="active-workout-title">Live Workout Session</div>
+            <button class="back-btn" onclick="cancelActiveWorkout()">Cancel</button>
+        </div>
+        <div class="content-card" style="background: var(--accent-dim); border-color: var(--accent);">
+            <div style="font-size: 0.85rem; color: var(--accent); font-weight: 700; margin-bottom: 2px;">SESSION IN PROGRESS</div>
+            <div style="font-size: 0.8rem; color: var(--text-main);">Log your actual performance for each exercise below. Hit finish when done.</div>
+        </div>
+        <div class="content-card">
+            <div id="active-exercises-container"></div>
+            <button class="action-btn" style="width: 100%; padding: 12px; margin-top: 12px; font-weight: 700;" onclick="finishActiveWorkout()">✓ Finish & Save Workout</button>
+        </div>
+    </div>
+
+    <!-- GYM STATS & ANALYTICS VIEW -->
+    <div id="gym-stats-view" class="view">
+        <div class="view-header">
+            <div class="view-title">Gym Stats & Progression</div>
+            <button class="back-btn" onclick="switchView('home-view')">Home Menu</button>
+        </div>
+        <div class="content-card">
+            <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 6px;">Progressive Overload Log</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">Review past completed sessions and weight/reps progression.</div>
+            <div id="gym-history-container"></div>
+        </div>
+    </div>
+
+    <!-- CALORIE TRACKER VIEW -->
+    <div id="calories-view" class="view">
+        <div class="view-header">
+            <div class="view-title">Calorie Tracker</div>
+            <button class="back-btn" onclick="switchView('home-view')">Home Menu</button>
+        </div>
+        <div class="content-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Daily Goal</div>
+                    <div style="font-size: 1.2rem; font-weight: 800; color: var(--accent);" id="calorie-target-display">3300 kcal</div>
+                </div>
+                <div>
+                    <button class="tool-btn" onclick="editCalorieTarget()">Edit Goal</button>
+                </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 700; margin-bottom: 4px;">
+                <span>Consumed: <span id="calories-consumed" style="color: var(--accent);">0</span> kcal</span>
+                <span>Remaining: <span id="calories-remaining">3300</span> kcal</span>
+            </div>
+            <div class="progress-bar-bg" style="margin-bottom: 0;">
+                <div class="progress-bar-fill" id="calorie-progress-bar" style="width: 0%;"></div>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Log Meal</div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <input type="text" id="new-meal-name" placeholder="Meal description (e.g. Oatmeal & Lactose-Free Milk)">
+                <input type="text" id="new-meal-cals" placeholder="Calories (e.g. 650)">
+                <button class="action-btn" style="width: 100%; padding: 10px;" onclick="addMeal()">Add Meal</button>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Today's Meals</div>
+            <div id="meals-list-container">
+                <div style="color: var(--text-muted); font-size: 0.85rem;">No meals logged today yet.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOOK TRACKER VIEW -->
+    <div id="books-view" class="view">
+        <div class="view-header">
+            <div class="view-title">Book Reading Tracker</div>
+            <button class="back-btn" onclick="switchView('home-view')">Home Menu</button>
+        </div>
+        <div class="content-card">
+            <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Add New Book</div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <input type="text" id="new-book-title" placeholder="Book Title...">
+                <input type="text" id="new-book-author" placeholder="Author...">
+                <input type="text" id="new-book-total" placeholder="Total Pages (e.g. 350)">
+                <button class="action-btn" style="width: 100%; padding: 10px;" onclick="addBook()">Add Book</button>
+            </div>
+        </div>
+        <div class="content-card">
+            <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Reading Library</div>
+            <div id="books-list-container">
+                <div style="color: var(--text-muted); font-size: 0.85rem;">No books added yet.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QUICK NOTES VIEW -->
+    <div id="notes-view" class="view">
+        <div class="view-header">
+            <div class="view-title">Quick Notes</div>
+            <button class="back-btn" onclick="switchView('home-view')">Home Menu</button>
+        </div>
+        <div class="content-card" style="flex: 1; display: flex; flex-direction: column;">
+            <textarea id="scratchpad-textarea" placeholder="Jot down rapid notes, math formulas, or code snippets here... Auto-saves instantly." style="flex: 1; min-height: 350px; resize: none; line-height: 1.4;" oninput="saveScratchpad()"></textarea>
+        </div>
+    </div>
+
+    <!-- FOCUS TIMER VIEW -->
+    <div id="pomodoro-view" class="view">
+        <div class="view-header">
+            <div class="view-title">Focus Timer</div>
+            <button class="back-btn" onclick="switchView('home-view')">Home Menu</button>
+        </div>
+        <div class="content-card" style="text-align: center; padding: 30px 16px;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;" id="timer-mode-label">Deep Work Session</div>
+            <div class="timer-display" id="timer-clock">25:00</div>
+            <div class="timer-btns">
+                <button class="action-btn" style="padding: 12px 24px;" id="timer-start-btn" onclick="toggleTimer()">Start</button>
+                <button class="tool-btn" style="padding: 12px 24px; font-size: 0.9rem;" onclick="resetTimer()">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETTINGS VIEW -->
+    <div id="settings-view" class="view">
+        <div class="view-header">
+            <div class="view-title">Settings & Data</div>
+            <button class="back-btn" onclick="switchView('home-view')">Home Menu</button>
+        </div>
+
+        <div class="content-card">
+            <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 10px;">Cloud Account</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 12px;">
+                <span id="settings-user-email" style="color: var(--text-muted);">Not signed in</span>
+                <button class="tool-btn" style="color: red; border-color: red;" onclick="handleLogout()">Sign Out</button>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 10px;">Appearance & Theme</div>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+                    <span>Light Mode</span>
+                    <input type="checkbox" id="light-mode-checkbox" onchange="toggleLightMode(this)" style="width: 20px; height: 20px; accent-color: var(--accent); cursor: pointer;">
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+                    <span>Accent Color</span>
+                    <input type="color" id="accent-color-input" value="#00e5ff" onchange="changeAccentColor(this.value)" style="background: none; border: 1px solid var(--border-color); width: 44px; height: 30px; border-radius: 6px; cursor: pointer;">
+                </div>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Data Management</div>
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                <button class="action-btn" style="flex: 1; padding: 10px; font-size: 0.85rem;" onclick="exportData()">Export JSON</button>
+                <input type="file" id="import-file-input" accept=".json" style="display:none;" onchange="importData(event)">
+                <button class="tool-btn" style="flex: 1; padding: 10px; font-size: 0.85rem; border-color: var(--accent); color: var(--accent);" onclick="document.getElementById('import-file-input').click()">Import JSON</button>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <div style="font-size: 0.9rem; font-weight: 700; color: red; margin-bottom: 8px;">Danger Zone</div>
+            <button class="action-btn" style="width:100%; background:red; color:#fff; border: none; padding: 12px;" onclick="resetAllData()">Factory Reset All Data</button>
+        </div>
+    </div>
+
+    <script>
+        // --- SUPABASE CLIENT SETUP ---
+        const SUPABASE_URL = 'https://vjyawtxmobxgclrwsgfx.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_8kujQY7du_nwIN8DvYvBxw_MeW-ZsjN';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let currentUser = null;
+
+        // Service Worker registration for Netlify PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                const swCode = `
+                    self.addEventListener('install', (e) => { self.skipWaiting(); });
+                    self.addEventListener('activate', (e) => { e.waitUntil(clients.claim()); });
+                    self.addEventListener('fetch', (e) => { e.respondWith(fetch(e.request).catch(() => caches.match(e.request))); });
+                `;
+                const blob = new Blob([swCode], { type: 'text/javascript' });
+                navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(err => console.log('SW failed:', err));
+            });
+        }
+
+        // --- AUTHENTICATION FLOW ---
+        async function initAuth() {
+            const { data: { session } } = await _supabase.auth.getSession();
+            if (session) {
+                currentUser = session.user;
+                document.getElementById('settings-user-email').textContent = currentUser.email;
+                switchView('home-view');
+                await loadAllDataFromCloud();
+            } else {
+                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+                document.getElementById('auth-view').classList.add('active');
+            }
+        }
+
+        async function handleLogin() {
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+            if (error) alert(error.message);
+            else initAuth();
+        }
+
+        async function handleSignUp() {
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            const { data, error } = await _supabase.auth.signUp({ email, password });
+            if (error) alert(error.message);
+            else alert('Signup successful! Check your email or sign in.');
+        }
+
+        async function handleLogout() {
+            await _supabase.auth.signOut();
+            currentUser = null;
+            location.reload();
+        }
+
+        // --- CLOUD SYNC & DATA LOADERS ---
+        async function loadAllDataFromCloud() {
+            if (!currentUser) return;
+            try {
+                // Load Habits
+                const { data: hData } = await _supabase.from('habits').select('*').eq('user_id', currentUser.id);
+                if (hData && hData.length > 0) habits = hData;
+
+                // Load Habit Logs
+                const { data: lData } = await _supabase.from('habit_logs').select('*').eq('user_id', currentUser.id);
+                if (lData) {
+                    habitLogs = {};
+                    lData.forEach(row => {
+                        const [y, m, d] = row.date.split('-');
+                        const key = `${y}-${parseInt(m)-1}-${parseInt(d)}-${row.habit_id}`;
+                        habitLogs[key] = row.completed;
+                    });
+                }
+
+                // Load Calendar Events
+                const { data: cData } = await _supabase.from('calendar_events').select('*').eq('user_id', currentUser.id);
+                if (cData) {
+                    calendarEvents = {};
+                    cData.forEach(row => { calendarEvents[row.date] = row.events; });
+                }
+
+                // Load Projects
+                const { data: pData } = await _supabase.from('projects').select('*').eq('user_id', currentUser.id);
+                if (pData && pData.length > 0) projects = pData;
+
+                // Load Gym Routines & History
+                const { data: gData } = await _supabase.from('gym_routines').select('*').eq('user_id', currentUser.id);
+                if (gData && gData.length > 0) gymRoutines = gData;
+
+                const { data: ghData } = await _supabase.from('gym_history').select('*').eq('user_id', currentUser.id);
+                if (ghData && ghData.length > 0) gymHistory = ghData;
+
+                // Load Books
+                const { data: bData } = await _supabase.from('books').select('*').eq('user_id', currentUser.id);
+                if (bData && bData.length > 0) books = bData;
+
+                // Load Quick Notes
+                const { data: nData } = await _supabase.from('quick_notes').select('*').eq('user_id', currentUser.id).single();
+                if (nData) document.getElementById('scratchpad-textarea').value = nData.content || '';
+
+                renderHabitMatrix();
+                renderProjectsList();
+                renderGymList();
+                renderCalories();
+                renderBooks();
+            } catch (err) {
+                console.log('Using local cache offline mode');
+            }
+        }
+
+        // --- CLOCK & QUOTES ---
+        const quotes = [
+            "\"We are what we repeatedly do. Excellence, then, is not an act, but a habit.\" — Aristotle",
+            "\"Simplicity is prerequisite for reliability.\" — Edsger W. Dijkstra",
+            "\"First principles thinking: boil things down to fundamental truths and build up.\" — Elon Musk",
+            "\"The way to get started is to quit talking and begin doing.\" — Walt Disney",
+            "\"Excellence is not an exception; it is a prevailing attitude.\" — Colin Powell",
+            "\"Focus is a matter of deciding what things you're not going to do.\" — John Carmack",
+            "\"Done is better than perfect.\" — Sheryl Sandberg",
+            "\"Small disciplines repeated with consistency every day lead to great achievements gained slowly.\" — John C. Maxwell"
+        ];
+
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('clock').textContent = `${hours}:${minutes}`;
+            document.getElementById('date').textContent = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+            const dateString = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+            let hash = 0;
+            for (let i = 0; i < dateString.length; i++) hash = dateString.charCodeAt(i) + ((hash << 5) - hash);
+            document.getElementById('quote').textContent = quotes[Math.abs(hash) % quotes.length];
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        function switchView(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+            if(viewId === 'calendar-view') renderCalendar();
+            if(viewId === 'projects-view') backToProjectsList();
+            if(viewId === 'gym-view') backToGymList();
+            if(viewId === 'gym-stats-view') renderGymStats();
+            if(viewId === 'calories-view') renderCalories();
+            if(viewId === 'books-view') renderBooks();
+        }
+
+        // --- THEME & ACCENT MANAGEMENT ---
+        function applySavedTheme() {
+            if (localStorage.getItem('dash_light_mode') === 'true') {
+                document.body.classList.add('light-mode');
+                document.getElementById('light-mode-checkbox').checked = true;
+            }
+            const savedAccent = localStorage.getItem('dash_accent_color');
+            if (savedAccent) setAccentColor(savedAccent, false);
+        }
+
+        function toggleLightMode(cb) {
+            document.body.classList.toggle('light-mode', cb.checked);
+            localStorage.setItem('dash_light_mode', cb.checked);
+        }
+
+        function changeAccentColor(hex) { setAccentColor(hex, true); }
+
+        function setAccentColor(hex, save) {
+            document.documentElement.style.setProperty('--accent', hex);
+            let r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16);
+            if (!isNaN(r)) document.documentElement.style.setProperty('--accent-dim', `rgba(${r}, ${g}, ${b}, 0.15)`);
+            if (save) localStorage.setItem('dash_accent_color', hex);
+        }
+
+        // --- HABITS ---
+        let habits = JSON.parse(localStorage.getItem('dash_matrix_habits')) || [{id:1, name:'Workout'}, {id:2, name:'Code / HW'}];
+        let habitLogs = JSON.parse(localStorage.getItem('dash_matrix_logs')) || {};
+        let habitDate = new Date();
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+        function getDaysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
+        function changeHabitMonth(dir) { habitDate.setMonth(habitDate.getMonth() + dir); renderHabitMatrix(); }
+        function currentHabitMonth() { habitDate = new Date(); renderHabitMatrix(); }
+
+        let isEditingHabits = false;
+        function openHabitManager() {
+            isEditingHabits = !isEditingHabits;
+            document.getElementById('habit-input-container').style.display = isEditingHabits ? 'block' : 'none';
+            renderHabitMatrix();
+        }
+
+        function renderHabitMatrix() {
+            const year = habitDate.getFullYear(), month = habitDate.getMonth();
+            document.getElementById('habit-month-label').textContent = `${monthNames[month]} ${year}`;
+            const container = document.getElementById('table-container');
+
+            if (habits.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">No habits added yet.</div>';
+                return;
+            }
+
+            let html = '<table class="habit-table"><thead><tr><th class="day-col">D</th>';
+            habits.forEach(h => {
+                let del = isEditingHabits ? ` <span onclick="deleteHabit(${h.id})" style="color:red; cursor:pointer;">✕</span>` : '';
+                html += `<th class="habit-header"><span>${h.name}${del}</span></th>`;
+            });
+            html += '</tr></thead><tbody>';
+
+            for (let day = 1; day <= getDaysInMonth(year, month); day++) {
+                html += `<tr><td class="day-col">${day}</td>`;
+                habits.forEach(h => {
+                    const key = `${year}-${month}-${day}-${h.id}`;
+                    html += `<td class="grid-cell ${habitLogs[key] ? 'checked' : ''}" onclick="toggleCell(${h.id}, ${year}, ${month}, ${day})"></td>`;
+                });
+                html += '</tr>';
+            }
+            html += '</tbody></table>';
+            container.innerHTML = html;
+            localStorage.setItem('dash_matrix_habits', JSON.stringify(habits));
+            localStorage.setItem('dash_matrix_logs', JSON.stringify(habitLogs));
+        }
+
+        async function toggleCell(habitId, year, month, day) {
+            const key = `${year}-${month}-${day}-${habitId}`;
+            habitLogs[key] = !habitLogs[key];
+            renderHabitMatrix();
+            if (currentUser) {
+                const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+                await _supabase.from('habit_logs').upsert({ user_id: currentUser.id, habit_id: habitId, date: dateStr, completed: habitLogs[key] }, { onConflict: 'user_id,habit_id,date' });
+            }
+        }
+
+        async function addHabit() {
+            const input = document.getElementById('new-habit-input');
+            if (!input.value.trim()) return;
+            const newH = { id: Date.now(), name: input.value.trim() };
+            habits.push(newH);
+            input.value = '';
+            renderHabitMatrix();
+            if (currentUser) await _supabase.from('habits').insert({ id: newH.id, user_id: currentUser.id, name: newH.name });
+        }
+
+        async function deleteHabit(id) {
+            habits = habits.filter(h => h.id !== id);
+            renderHabitMatrix();
+            if (currentUser) await _supabase.from('habits').delete().eq('id', id).eq('user_id', currentUser.id);
+        }
+
+        // --- CALENDAR ---
+        let calDate = new Date(), selectedDate = new Date();
+        let calendarEvents = JSON.parse(localStorage.getItem('dash_calendar_events')) || {};
+
+        function changeCalMonth(dir) { calDate.setMonth(calDate.getMonth() + dir); renderCalendar(); }
+        function currentCalMonth() { calDate = new Date(); renderCalendar(); }
+
+        function renderCalendar() {
+            const year = calDate.getFullYear(), month = calDate.getMonth();
+            document.getElementById('cal-month-label').textContent = `${monthNames[month]} ${year}`;
+            const gridEl = document.getElementById('cal-days-grid');
+            gridEl.innerHTML = '';
+
+            const firstDay = (new Date(year, month, 1).getDay() + 6) % 7;
+            const total = getDaysInMonth(year, month), today = new Date();
+
+            for (let i = 0; i < firstDay; i++) gridEl.appendChild(Object.assign(document.createElement('div'), {className: 'cal-day empty'}));
+
+            for (let day = 1; day <= total; day++) {
+                const dayCell = document.createElement('div');
+                dayCell.className = 'cal-day';
+                const dateKey = `${year}-${month}-${day}`;
+                if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) dayCell.classList.add('today');
+                if (day === selectedDate.getDate() && month === selectedDate.getMonth() && year === selectedDate.getFullYear()) dayCell.classList.add('selected');
+
+                dayCell.innerHTML = `<span>${day}</span>`;
+                if (calendarEvents[dateKey]?.length > 0) dayCell.appendChild(Object.assign(document.createElement('div'), {className: 'event-dot'}));
+
+                dayCell.onclick = () => { selectedDate = new Date(year, month, day); renderCalendar(); renderSelectedEvents(); };
+                gridEl.appendChild(dayCell);
+            }
+            renderSelectedEvents();
+        }
+
+        function renderSelectedEvents() {
+            const key = `${selectedDate.getFullYear()}-${selectedDate.getMonth()}-${selectedDate.getDate()}`;
+            document.getElementById('selected-date-title').textContent = `Events for ${monthNames[selectedDate.getMonth()]} ${selectedDate.getDate()}, ${selectedDate.getFullYear()}`;
+            const container = document.getElementById('event-list-container');
+            container.innerHTML = '';
+            const events = calendarEvents[key] || [];
+            if (events.length === 0) { container.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem;">No events scheduled.</div>'; return; }
+            events.forEach((ev, idx) => {
+                container.innerHTML += `<div class="event-list-item"><span>${ev}</span><span onclick="deleteEvent('${key}', ${idx})" style="color:red; cursor:pointer;">✕</span></div>`;
+            });
+        }
+
+        async function addEvent() {
+            const input = document.getElementById('new-event-input');
+            if (!input.value.trim()) return;
+            const key = `${selectedDate.getFullYear()}-${selectedDate.getMonth()}-${selectedDate.getDate()}`;
+            if (!calendarEvents[key]) calendarEvents[key] = [];
+            calendarEvents[key].push(input.value.trim());
+            input.value = '';
+            renderCalendar();
+            localStorage.setItem('dash_calendar_events', JSON.stringify(calendarEvents));
+            if (currentUser) await _supabase.from('calendar_events').upsert({ user_id: currentUser.id, date: key, events: calendarEvents[key] }, { onConflict: 'user_id,date' });
+        }
+
+        async function deleteEvent(key, idx) {
+            calendarEvents[key].splice(idx, 1);
+            if (calendarEvents[key].length === 0) delete calendarEvents[key];
+            renderCalendar();
+            localStorage.setItem('dash_calendar_events', JSON.stringify(calendarEvents));
+            if (currentUser) await _supabase.from('calendar_events').upsert({ user_id: currentUser.id, date: key, events: calendarEvents[key] || [] }, { onConflict: 'user_id,date' });
+        }
+
+        // --- PROJECTS ---
+        let projects = JSON.parse(localStorage.getItem('dash_projects')) || [{id:1, title:'PocketDAC Handheld', desc:'ESP32 Audio Player', tasks:[], photos:[]}];
+        let currentProjectId = null;
+
+        function renderProjectsList() {
+            const container = document.getElementById('projects-cards-list');
+            container.innerHTML = '';
+            if (projects.length === 0) { container.innerHTML = '<div class="content-card" style="text-align:center; color:var(--text-muted);">No projects.</div>'; return; }
+            projects.forEach(p => {
+                const total = p.tasks.length, done = p.tasks.filter(t => t.done).length;
+                const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+                container.innerHTML += `
+                    <div class="project-card">
+                        <div class="project-header-row"><span class="project-title">${p.title}</span><span class="project-pct">${pct}%</span></div>
+                        <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:6px;">${p.desc || ''}</div>
+                        <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: ${pct}%;"></div></div>
+                        <button class="tool-btn active-accent" style="width:150px; padding:6px;" onclick="openProjectDetail(${p.id})">Open Workspace →</button>
+                    </div>`;
+            });
+            localStorage.setItem('dash_projects', JSON.stringify(projects));
+        }
+
+        async function addProject() {
+            const title = document.getElementById('new-proj-title').value.trim();
+            if (!title) return;
+            const newP = { id: Date.now(), title, desc: document.getElementById('new-proj-desc').value.trim(), tasks: [], photos: [] };
+            projects.push(newP);
+            document.getElementById('new-proj-title').value = '';
+            document.getElementById('new-proj-desc').value = '';
+            renderProjectsList();
+            if (currentUser) await _supabase.from('projects').insert({ id: newP.id, user_id: currentUser.id, title: newP.title, desc: newP.desc, tasks: [], photos: [] });
+        }
+
+        function openProjectDetail(id) { currentProjectId = id; document.getElementById('projects-list-container').style.display = 'none'; document.getElementById('project-detail-container').style.display = 'block'; renderProjectDetail(); }
+        function backToProjectsList() { currentProjectId = null; document.getElementById('project-detail-container').style.display = 'none'; document.getElementById('projects-list-container').style.display = 'block'; renderProjectsList(); }
+
+        function renderProjectDetail() {
+            const p = projects.find(item => item.id === currentProjectId);
+            if (!p) return;
+            document.getElementById('detail-proj-title').textContent = p.title;
+            document.getElementById('detail-proj-desc').textContent = p.desc || '';
+            const total = p.tasks.length, done = p.tasks.filter(t => t.done).length;
+            const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+            document.getElementById('detail-proj-pct').textContent = `${pct}%`;
+            document.getElementById('detail-proj-bar').style.width = `${pct}%`;
+
+            const tContainer = document.getElementById('detail-tasks-list');
+            tContainer.innerHTML = p.tasks.length === 0 ? '<div style="color:var(--text-muted); font-size:0.85rem;">No tasks.</div>' : '';
+            p.tasks.forEach((t, idx) => {
+                tContainer.innerHTML += `<div class="task-item"><div class="task-left"><div class="checkbox-task ${t.done?'checked':''}" onclick="toggleTask(${idx})"></div><span style="${t.done?'text-decoration:line-through;opacity:0.6;':''}">${t.text}</span></div><span onclick="deleteTask(${idx})" style="color:red; cursor:pointer;">✕</span></div>`;
+            });
+
+            const pContainer = document.getElementById('detail-photo-gallery');
+            pContainer.innerHTML = '';
+            p.photos.forEach((url, idx) => {
+                pContainer.innerHTML += `<img class="photo-thumb" src="${url}" onclick="if(confirm('Delete photo?')){projects.find(i=>i.id===currentProjectId).photos.splice(${idx},1); renderProjectDetail();}">`;
+            });
+            localStorage.setItem('dash_projects', JSON.stringify(projects));
+        }
+
+        async function addTask() {
+            const input = document.getElementById('new-task-input');
+            if (!input.value.trim()) return;
+            const p = projects.find(i => i.id === currentProjectId);
+            p.tasks.push({ text: input.value.trim(), done: false });
+            input.value = '';
+            renderProjectDetail();
+            if (currentUser) await _supabase.from('projects').update({ tasks: p.tasks }).eq('id', p.id);
+        }
+
+        async function toggleTask(idx) {
+            const p = projects.find(i => i.id === currentProjectId);
+            p.tasks[idx].done = !p.tasks[idx].done;
+            renderProjectDetail();
+            if (currentUser) await _supabase.from('projects').update({ tasks: p.tasks }).eq('id', p.id);
+        }
+
+        async function deleteTask(idx) {
+            const p = projects.find(i => i.id === currentProjectId);
+            p.tasks.splice(idx, 1);
+            renderProjectDetail();
+            if (currentUser) await _supabase.from('projects').update({ tasks: p.tasks }).eq('id', p.id);
+        }
+
+        async function handlePhotoUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async function(evt) {
+                const p = projects.find(i => i.id === currentProjectId);
+                p.photos.push(evt.target.result);
+                renderProjectDetail();
+                if (currentUser) await _supabase.from('projects').update({ photos: p.photos }).eq('id', p.id);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function deleteCurrentProject() {
+            if (confirm('Delete project?')) {
+                projects = projects.filter(i => i.id !== currentProjectId);
+                if (currentUser) await _supabase.from('projects').delete().eq('id', currentProjectId);
+                backToProjectsList();
+            }
+        }
+
+        // --- GYM ROUTINES & STATS ---
+        let gymRoutines = JSON.parse(localStorage.getItem('dash_gym_routines')) || [{id:1, title:'Push Day', desc:'Chest & Triceps', exercises:[{name:'Bench Press', sets:'4', reps:'8', weight:'80kg'}]}];
+        let gymHistory = JSON.parse(localStorage.getItem('dash_gym_history')) || [];
+        let currentGymId = null, activeWorkoutSession = null;
+
+        function renderGymList() {
+            const container = document.getElementById('gym-cards-list');
+            container.innerHTML = gymRoutines.length === 0 ? '<div style="color:var(--text-muted); text-align:center;">No routines.</div>' : '';
+            gymRoutines.forEach(r => {
+                container.innerHTML += `
+                    <div class="gym-card">
+                        <div class="gym-header-row"><span class="gym-title">${r.title}</span><span style="font-size:0.75rem; color:var(--accent);">${r.exercises.length} Exercises</span></div>
+                        <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;">${r.desc || ''}</div>
+                        <div style="display:flex; gap:6px;"><button class="tool-btn active-accent" style="flex:1; padding:6px;" onclick="openGymDetail(${r.id})">Edit</button><button class="action-btn" style="flex:1; padding:6px; font-size:0.75rem;" onclick="startQuickWorkout(${r.id})">⚡ Start</button></div>
+                    </div>`;
+            });
+            localStorage.setItem('dash_gym_routines', JSON.stringify(gymRoutines));
+        }
+
+        async function addGymRoutine() {
+            const title = document.getElementById('new-gym-title').value.trim();
+            if (!title) return;
+            const newR = { id: Date.now(), title, desc: document.getElementById('new-gym-desc').value.trim(), exercises: [] };
+            gymRoutines.push(newR);
+            document.getElementById('new-gym-title').value = '';
+            document.getElementById('new-gym-desc').value = '';
+            renderGymList();
+            if (currentUser) await _supabase.from('gym_routines').insert({ id: newR.id, user_id: currentUser.id, title: newR.title, desc: newR.desc, exercises: [] });
+        }
+
+        function openGymDetail(id) { currentGymId = id; document.getElementById('gym-list-container').style.display = 'none'; document.getElementById('gym-detail-container').style.display = 'block'; renderGymDetail(); }
+        function backToGymList() { currentGymId = null; document.getElementById('gym-detail-container').style.display = 'none'; document.getElementById('gym-list-container').style.display = 'block'; renderGymList(); }
+
+        function renderGymDetail() {
+            const r = gymRoutines.find(i => i.id === currentGymId);
+            if (!r) return;
+            document.getElementById('detail-gym-title').textContent = r.title;
+            document.getElementById('detail-gym-desc').textContent = r.desc || '';
+            const container = document.getElementById('detail-exercises-list');
+            container.innerHTML = r.exercises.length === 0 ? '<div style="color:var(--text-muted); font-size:0.85rem;">No exercises.</div>' : '';
+            r.exercises.forEach((ex, idx) => {
+                container.innerHTML += `<div class="exercise-item"><div><div style="font-weight:700;">${ex.name}</div><div style="font-size:0.75rem; color:var(--text-muted);">${ex.sets} Sets × ${ex.reps} Reps (${ex.weight})</div></div><span onclick="deleteExerciseTemplate(${idx})" style="color:red; cursor:pointer;">✕</span></div>`;
+            });
+        }
+
+        async function addExerciseTemplate() {
+            const name = document.getElementById('new-ex-name').value.trim();
+            if (!name) return;
+            const r = gymRoutines.find(i => i.id === currentGymId);
+            r.exercises.push({ name, sets: document.getElementById('new-ex-sets').value.trim()||'3', reps: document.getElementById('new-ex-reps').value.trim()||'10', weight: document.getElementById('new-ex-weight').value.trim()||'0kg' });
+            document.getElementById('new-ex-name').value = '';
+            renderGymDetail();
+            if (currentUser) await _supabase.from('gym_routines').update({ exercises: r.exercises }).eq('id', r.id);
+        }
+
+        async function deleteExerciseTemplate(idx) {
+            const r = gymRoutines.find(i => i.id === currentGymId);
+            r.exercises.splice(idx, 1);
+            renderGymDetail();
+            if (currentUser) await _supabase.from('gym_routines').update({ exercises: r.exercises }).eq('id', r.id);
+        }
+
+        function startQuickWorkout(id) { currentGymId = id; startActiveWorkout(); }
+        function startActiveWorkout() {
+            const r = gymRoutines.find(i => i.id === currentGymId);
+            if (!r || r.exercises.length === 0) { alert('Add exercises first.'); return; }
+            activeWorkoutSession = { routineTitle: r.title, date: new Date().toLocaleDateString(), exercises: r.exercises.map(e => ({...e, actualWeight: e.weight, actualReps: e.reps})) };
+            document.getElementById('active-workout-title').textContent = `Live: ${r.title}`;
+            const container = document.getElementById('active-exercises-container');
+            container.innerHTML = '';
+            activeWorkoutSession.exercises.forEach((ex, idx) => {
+                container.innerHTML += `<div style="background:var(--bg-color); border:1px solid var(--border-color); padding:8px; margin-bottom:8px; border-radius:6px;"><div style="font-weight:700; color:var(--accent);">${ex.name}</div><div style="display:flex; gap:8px; margin-top:4px;"><input type="text" id="act-wt-${idx}" value="${ex.actualWeight}"><input type="text" id="act-reps-${idx}" value="${ex.actualReps}"></div></div>`;
+            });
+            switchView('gym-active-view');
+        }
+
+        async function finishActiveWorkout() {
+            activeWorkoutSession.exercises.forEach((ex, idx) => {
+                ex.actualWeight = document.getElementById(`act-wt-${idx}`).value;
+                ex.actualReps = document.getElementById(`act-reps-${idx}`).value;
+            });
+            gymHistory.unshift(activeWorkoutSession);
+            localStorage.setItem('dash_gym_history', JSON.stringify(gymHistory));
+            if (currentUser) await _supabase.from('gym_history').insert({ user_id: currentUser.id, routine_title: activeWorkoutSession.routineTitle, date: activeWorkoutSession.date, exercises_json: activeWorkoutSession.exercises });
+            activeWorkoutSession = null;
+            switchView('gym-view');
+            backToGymList();
+        }
+        function cancelActiveWorkout() { activeWorkoutSession = null; switchView('gym-view'); }
+
+        function renderGymStats() {
+            const container = document.getElementById('gym-history-container');
+            container.innerHTML = gymHistory.length === 0 ? '<div style="color:var(--text-muted); text-align:center;">No completed workouts.</div>' : '';
+            gymHistory.forEach(s => {
+                let exHtml = '';
+                s.exercises.forEach(e => exHtml += `<div style="font-size:0.8rem; display:flex; justify-content:between;"><span>${e.name}</span><span style="color:var(--accent);">${e.actualWeight} × ${e.actualReps}</span></div>`);
+                container.innerHTML += `<div style="background:var(--bg-color); border:1px solid var(--border-color); padding:8px; margin-bottom:8px; border-radius:6px;"><div style="font-weight:700; color:var(--accent);">${s.routineTitle} <span style="font-size:0.75rem; color:var(--text-muted); float:right;">${s.date}</span></div>${exHtml}</div>`;
+            });
+        }
+
+        // --- CALORIES ---
+        let calorieTarget = parseInt(localStorage.getItem('dash_cal_target')) || 3300;
+        let calorieLogs = JSON.parse(localStorage.getItem('dash_cal_logs')) || {};
+
+        function renderCalories() {
+            const todayKey = new Date().toISOString().slice(0, 10);
+            const meals = calorieLogs[todayKey] || [];
+            document.getElementById('calorie-target-display').textContent = `${calorieTarget} kcal`;
+            let consumed = meals.reduce((sum, m) => sum + m.cals, 0);
+            document.getElementById('calories-consumed').textContent = consumed;
+            document.getElementById('calories-remaining').textContent = Math.max(0, calorieTarget - consumed);
+            document.getElementById('calorie-progress-bar').style.width = `${Math.min(100, Math.round((consumed/calorieTarget)*100))}%`;
+
+            const container = document.getElementById('meals-list-container');
+            container.innerHTML = meals.length === 0 ? '<div style="color:var(--text-muted); font-size:0.85rem;">No meals logged.</div>' : '';
+            meals.forEach((m, idx) => {
+                container.innerHTML += `<div class="meal-item"><div><div style="font-weight:600;">${m.name}</div><div style="font-size:0.75rem; color:var(--accent);">${m.cals} kcal</div></div><span onclick="deleteMeal('${todayKey}', ${idx})" style="color:red; cursor:pointer;">✕</span></div>`;
+            });
+            localStorage.setItem('dash_cal_logs', JSON.stringify(calorieLogs));
+        }
+
+        async function addMeal() {
+            const name = document.getElementById('new-meal-name').value.trim();
+            const cals = parseInt(document.getElementById('new-meal-cals').value.trim());
+            if (!name || isNaN(cals)) return;
+            const todayKey = new Date().toISOString().slice(0, 10);
+            if (!calorieLogs[todayKey]) calorieLogs[todayKey] = [];
+            calorieLogs[todayKey].push({ name, cals });
+            document.getElementById('new-meal-name').value = '';
+            document.getElementById('new-meal-cals').value = '';
+            renderCalories();
+            if (currentUser) await _supabase.from('calories').upsert({ user_id: currentUser.id, date: todayKey, meals_json: calorieLogs[todayKey] }, { onConflict: 'user_id,date' });
+        }
+
+        async function deleteMeal(dateKey, idx) {
+            calorieLogs[dateKey].splice(idx, 1);
+            renderCalories();
+            if (currentUser) await _supabase.from('calories').upsert({ user_id: currentUser.id, date: dateKey, meals_json: calorieLogs[dateKey] }, { onConflict: 'user_id,date' });
+        }
+
+        function editCalorieTarget() {
+            const t = prompt('Daily target (kcal):', calorieTarget);
+            if (t && !isNaN(t)) { calorieTarget = parseInt(t); renderCalories(); localStorage.setItem('dash_cal_target', calorieTarget); }
+        }
+
+        // --- BOOKS ---
+        let books = JSON.parse(localStorage.getItem('dash_books')) || [{id:1, title:'Atomic Habits', author:'James Clear', current:50, total:300}];
+
+        function renderBooks() {
+            const container = document.getElementById('books-list-container');
+            container.innerHTML = books.length === 0 ? '<div style="color:var(--text-muted); font-size:0.85rem;">No books.</div>' : '';
+            books.forEach((b, idx) => {
+                const pct = Math.min(100, Math.round((b.current / b.total) * 100));
+                container.innerHTML += `
+                    <div class="book-card">
+                        <div class="book-header-row"><div><div class="book-title">${b.title}</div><div style="font-size:0.75rem; color:var(--text-muted);">${b.author||''}</div></div><span class="book-pct">${pct}%</span></div>
+                        <div style="font-size:0.8rem; color:var(--text-muted); display:flex; justify-content:space-between; margin:4px 0;"><span>Page ${b.current} of ${b.total}</span><span onclick="deleteBook(${idx})" style="color:red; cursor:pointer;">Delete</span></div>
+                        <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%;"></div></div>
+                        <div style="display:flex; gap:4px;"><button class="tool-btn" style="flex:1;" onclick="updateBook(${idx},-10)">-10</button><button class="tool-btn" style="flex:1;" onclick="updateBook(${idx},-1)">-1</button><button class="tool-btn active-accent" style="flex:1;" onclick="updateBook(${idx},1)">+1</button><button class="tool-btn active-accent" style="flex:1;" onclick="updateBook(${idx},10)">+10</button></div>
+                    </div>`;
+            });
+            localStorage.setItem('dash_books', JSON.stringify(books));
+        }
+
+        async function addBook() {
+            const title = document.getElementById('new-book-title').value.trim();
+            const total = parseInt(document.getElementById('new-book-total').value.trim());
+            if (!title || isNaN(total)) return;
+            const newB = { id: Date.now(), title, author: document.getElementById('new-book-author').value.trim(), current: 0, total };
+            books.push(newB);
+            document.getElementById('new-book-title').value = '';
+            document.getElementById('new-book-author').value = '';
+            document.getElementById('new-book-total').value = '';
+            renderBooks();
+            if (currentUser) await _supabase.from('books').insert({ id: newB.id, user_id: currentUser.id, title: newB.title, author: newB.author, current: 0, total });
+        }
+
+        async function updateBook(idx, delta) {
+            books[idx].current = Math.max(0, Math.min(books[idx].total, books[idx].current + delta));
+            renderBooks();
+            if (currentUser) await _supabase.from('books').update({ current: books[idx].current }).eq('id', books[idx].id);
+        }
+
+        async function deleteBook(idx) {
+            const id = books[idx].id;
+            books.splice(idx, 1);
+            renderBooks();
+            if (currentUser) await _supabase.from('books').delete().eq('id', id);
+        }
+
+        // --- QUICK NOTES ---
+        let notesTimer = null;
+        async function saveScratchpad() {
+            const val = document.getElementById('scratchpad-textarea').value;
+            localStorage.setItem('dash_quick_notes', val);
+            clearTimeout(notesTimer);
+            if (currentUser) {
+                notesTimer = setTimeout(async () => {
+                    await _supabase.from('quick_notes').upsert({ user_id: currentUser.id, content: val }, { onConflict: 'user_id' });
+                }, 1000);
+            }
+        }
+
+        // --- POMODORO TIMER ---
+        let timerSeconds = 25 * 60, timerInterval = null, isRunning = false;
+        function toggleTimer() {
+            const btn = document.getElementById('timer-start-btn');
+            if (!isRunning) {
+                isRunning = true; btn.textContent = 'Pause';
+                timerInterval = setInterval(() => {
+                    if (timerSeconds > 0) { timerSeconds--; updateTimerDisplay(); }
+                    else { clearInterval(timerInterval); isRunning = false; btn.textContent = 'Start'; alert('Focus session complete!'); }
+                }, 1000);
+            } else { isRunning = false; clearInterval(timerInterval); btn.textContent = 'Start'; }
+        }
+        function resetTimer() { clearInterval(timerInterval); isRunning = false; timerSeconds = 25 * 60; document.getElementById('timer-start-btn').textContent = 'Start'; updateTimerDisplay(); }
+        function updateTimerDisplay() {
+            document.getElementById('timer-clock').textContent = `${String(Math.floor(timerSeconds/60)).padStart(2,'0')}:${String(timerSeconds%60).padStart(2,'0')}`;
+        }
+
+        // --- BACKUP & SETTINGS ---
+        function exportData() {
+            const backup = { habits, habitLogs, calendarEvents, projects, gymRoutines, gymHistory, calorieTarget, calorieLogs, books, scratchpad: localStorage.getItem('dash_quick_notes') };
+            const anchor = Object.assign(document.createElement('a'), { href: "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup, null, 2)), download: `dashboard_backup.json` });
+            document.body.appendChild(anchor); anchor.click(); anchor.remove();
+        }
+
+        function importData(e) {
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = JSON.parse(evt.target.result);
+                    if(data.habits) localStorage.setItem('dash_matrix_habits', JSON.stringify(data.habits));
+                    if(data.habitLogs) localStorage.setItem('dash_matrix_logs', JSON.stringify(data.habitLogs));
+                    if(data.projects) localStorage.setItem('dash_projects', JSON.stringify(data.projects));
+                    alert('Import successful! Refreshing.'); location.reload();
+                } catch(err) { alert('Invalid JSON.'); }
+            };
+            reader.readAsText(e.target.files[0]);
+        }
+
+        function resetAllData() {
+            if (confirm('Wipe all data?')) { localStorage.clear(); location.reload(); }
+        }
+
+        applySavedTheme();
+        initAuth();
+    </script>
+</body>
+</html>
