@@ -7,6 +7,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0d1017">
+<meta name="apple-mobile-web-app-title" content="Command">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-32.png">
 <title>Command Centre</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -454,6 +458,18 @@ function authPanel(){
   if(u)return '<div class="panel"><h3>Account</h3><p style="margin:0 0 6px">Signed in as <strong>'+esc(u.email||'your account')+'</strong></p><div class="sync" id="syncline">'+esc(ui.sync)+'</div><div class="row" style="margin-top:12px">'+(D.pull?'<button class="btn ghost sm" data-act="syncnow">Sync now</button>':'')+'<button class="btn ghost sm" data-act="signout">Sign out</button>'+cfgBtn()+'</div></div>';
   return '<div class="panel"><h3>Sign in</h3><p class="muted" style="margin:0 0 12px">Sign in to sync your dashboard across all your devices.</p><form data-form="auth" class="form"><input id="ae" type="email" autocomplete="email" placeholder="Email" required aria-label="Email"><input id="ap" type="password" autocomplete="current-password" minlength="6" placeholder="Password" required aria-label="Password"><button class="btn" type="submit" data-mode="in">Sign in</button><button class="btn ghost" type="submit" data-mode="up">Sign up</button></form><div class="sync" id="syncline" style="margin-top:10px">'+esc(ui.sync)+'</div><div style="margin-top:10px">'+cfgBtn()+'</div></div>';
 }
+var deferredInstall=null;
+window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();deferredInstall=e;if(ui.view==='prefs')render()});
+window.addEventListener('appinstalled',function(){deferredInstall=null;toast('App installed.');render()});
+function isStandalone(){return (window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||window.navigator.standalone===true}
+function installPanel(){
+  if(isStandalone())return '';
+  var ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  var body=deferredInstall?'<p style="margin:0 0 12px">Add Command Centre to your home screen or desktop. It opens in its own window and still opens without a connection.</p><button class="btn" data-act="install">Install app</button>'
+   :ios?'<p class="muted" style="margin:0">On iPhone or iPad, tap the Share button in Safari, then choose Add to Home Screen.</p>'
+   :'<p class="muted" style="margin:0">Open your browser menu and choose Install app (Chrome, Edge) or Add to Home screen (Android). If the option is missing, reload the page once and try again.</p>';
+  return '<div class="panel"><h3>Install app</h3>'+body+'</div>';
+}
 /* Small API handed to the adapter so it can push remote changes into the UI */
 window.CC={
   getState:function(){return S},
@@ -644,6 +660,7 @@ V.prefs=function(){
   '<div class="panel"><h3>Appearance</h3><div class="seg" role="group" aria-label="Theme">'+['light','dark','system'].map(function(t){return '<button data-act="theme" data-t="'+t+'" aria-pressed="'+(S.theme===t)+'">'+t[0].toUpperCase()+t.slice(1)+'</button>'}).join('')+'</div>'+
   '<div class="lab2" style="margin:16px 0 8px">Accent colour</div><div class="sw">'+Object.keys(HUES).map(function(k){return '<button data-act="hue" data-h="'+HUES[k]+'" aria-pressed="'+(S.hue===HUES[k])+'" aria-label="'+k+'" title="'+k+'" style="background:hsl('+HUES[k]+' 65% 50%)"></button>'}).join('')+'</div></div>'+
   authPanel()+
+  installPanel()+
   '<div class="panel"><h3>Data</h3><div class="row"><button class="btn" data-act="export">Export JSON</button><button class="btn ghost" data-act="importtoggle">Import JSON</button></div>'+
   (ui.exportText?'<p class="muted" style="margin:12px 0 6px">Copy this backup and keep it somewhere safe.</p><textarea id="expt" readonly>'+esc(ui.exportText)+'</textarea>':'')+
   (ui.importOpen?'<div style="margin-top:12px"><input type="file" id="impfile" accept=".json,application/json" aria-label="Backup file"><p class="muted" style="margin:10px 0 6px">Or paste a backup here.</p><textarea id="impt" placeholder="{ … }"></textarea><div class="row" style="margin-top:8px"><button class="btn" data-act="doimport">Replace my data with this</button></div></div>':'')+'</div>'+
@@ -709,6 +726,7 @@ var A={
   var txt=JSON.stringify(S,null,2);ui.exportText=txt;render();
   try{var bl=new Blob([txt],{type:'application/json'}),u=URL.createObjectURL(bl),a=document.createElement('a');a.href=u;a.download='command-centre-backup-'+today()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},1000)}catch(e){}
  },
+ install:async function(){if(!deferredInstall)return;deferredInstall.prompt();try{await deferredInstall.userChoice}catch(e){}deferredInstall=null;render()},
  skiplogin:function(){try{localStorage.setItem('cc-skip-login','1')}catch(e){}render()},
  clearcfg:function(){if(!asked('clearcfg'))return;D.clearConfig();location.reload()},
  syncnow:function(){if(D.pull)D.pull()},
@@ -830,5 +848,6 @@ window.addEventListener('hashchange',function(){setView(location.hash.replace('#
 })();
 })();
 </script>
+<script>if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}</script>
 </body>
 </html>
