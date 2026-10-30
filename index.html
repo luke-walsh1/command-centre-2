@@ -173,6 +173,16 @@ table.hab{border-collapse:collapse;width:100%;min-width:560px}
 .focusline{display:flex;flex-direction:column;gap:6px}
 .focusline .q{color:var(--muted);font-style:italic}
 .focusline input{font-size:17px;padding:10px 12px}
+.login{min-height:calc(100vh - 80px);display:grid;place-items:center;padding:24px 0}
+.login-card{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:28px 24px;display:flex;flex-direction:column;gap:14px}
+.login-card .brand{font-size:26px}
+.login-card h2{font-size:30px}
+.login-form{display:flex;flex-direction:column;gap:6px}
+.login-form input{width:100%;font-size:16px;padding:11px 12px}
+.login-form .lab2{margin-top:8px}
+.login-form .row{margin-top:14px}
+.linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;padding:4px 0;align-self:flex-start;font-size:13px}
+.linkbtn:hover{color:var(--accent)}
 @media (prefers-reduced-motion:no-preference){.bar>i,.ring .val{transition:all .35s ease}}
 </style>
 </head>
@@ -184,16 +194,16 @@ table.hab{border-collapse:collapse;width:100%;min-width:560px}
 <div class="wrap"><main id="app"></main></div>
 <div id="toast" class="toast" hidden></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script>if(!window.supabase){document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"><\/script>')}</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
+<script>if(!window.supabase){document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"><\/script>')}</script>
 <script>
 /* ===== Supabase data layer =====
    One row per user in public.dashboard_state holds the whole dashboard as JSON.
    Config comes from the two constants below, or (if they still say YOUR_...) from the setup form in Settings,
    which stores them in this browser only. */
 (function () {
-  var SUPABASE_URL = 'YOUR_SUPABASE_URL';        // e.g. 'https://abcdxyz.supabase.co'
-  var SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // anon / publishable key
+  var SUPABASE_URL = 'https://ctpgfenlqvzgfhcveovi.supabase.co';
+  var SUPABASE_ANON_KEY = 'sb_publishable_qDLp-eHYmQ2rz_3TsAycGw_f3sUta5H'; // public key, safe in the page because row level security protects the data
   var TABLE = 'dashboard_state';
 
   var LS_STATE = 'command-centre-v2', LS_CFG = 'cc-supabase-config', LS_LAST = 'cc-last-user',
@@ -235,10 +245,12 @@ table.hab{border-collapse:collapse;width:100%;min-width:560px}
     lsSet(LS_LAST, session.user.id);
   }
 
-  async function pull() {
+  function typing() { var a = document.activeElement; return !!a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName); }
+
+  async function pull(quiet) {
     if (!sb || !session || !cc || busy) return;
     busy = true;
-    cc.setStatus('Syncing…');
+    if (quiet !== true) cc.setStatus('Syncing…');
     try {
       var r = await sb.from(TABLE).select('data').eq('user_id', session.user.id).maybeSingle();
       if (r.error) throw r.error;
@@ -257,7 +269,7 @@ table.hab{border-collapse:collapse;width:100%;min-width:560px}
           cc.setStatus('Synced ' + hhmm());
         } else {
           lsSet(LS_LAST, session.user.id);
-          cc.setStatus('Synced ' + hhmm());
+          if (quiet !== true) cc.setStatus('Synced ' + hhmm());
         }
       } else {
         await upload(local); // first time for this account: push what is on this device
@@ -269,12 +281,36 @@ table.hab{border-collapse:collapse;width:100%;min-width:560px}
     busy = false;
   }
 
+  // Live updates: another device saves, this one updates within a second or two.
+  var chan = null;
+  function applyRemote(remote) {
+    var local = cc.getState();
+    if ((remote.updated || 0) <= (local.updated || 0)) return; // our own echo, or older
+    if (typing()) { setTimeout(function () { applyRemote(remote); }, 4000); return; }
+    writeCache(remote);
+    cc.replaceState(remote);
+    cc.setStatus('Synced ' + hhmm());
+  }
+  function subscribe() {
+    if (chan || !sb || !session) return;
+    try {
+      chan = sb.channel('dashboard-' + session.user.id)
+        .on('postgres_changes', { event: '*', schema: 'public', table: TABLE, filter: 'user_id=eq.' + session.user.id },
+          function (p) { var row = p && p.new; if (row && row.data && row.data.habits) applyRemote(row.data); })
+        .subscribe();
+    } catch (e) { chan = null; }
+  }
+  function unsubscribe() { if (chan) { try { sb.removeChannel(chan); } catch (e) {} chan = null; } }
+
   function setSession(s) {
     var had = session && session.user.id;
     session = s;
     if (!cc) return;
-    if (s && had !== s.user.id) pull().then(function () { cc.refresh(); });
-    else { if (!s) cc.setStatus('Signed out. Saved on this device only.'); cc.refresh(); }
+    if (s && had !== s.user.id) { subscribe(); pull().then(function () { cc.refresh(); }); }
+    else {
+      if (!s) { unsubscribe(); cc.setStatus('Signed out. Saved on this device only.'); }
+      cc.refresh();
+    }
   }
 
   window.CCData = {
@@ -287,19 +323,24 @@ table.hab{border-collapse:collapse;width:100%;min-width:560px}
       return 'Synced ' + hhmm();
     },
 
-    pull: pull,
+    pull: function () { return pull(); },
+    authReady: false,
 
     start: function (api) {
       cc = api;
       if (!configured) { cc.setStatus('Cloud sync is off'); return; }
       if (!sb) { cc.setStatus('Could not load the Supabase library. Check your connection.'); return; }
       cc.setStatus('Signed out');
-      sb.auth.getSession().then(function (r) { setSession(r.data.session); });
+      sb.auth.getSession().then(
+        function (r) { window.CCData.authReady = true; setSession(r.data.session); },
+        function () { window.CCData.authReady = true; setSession(null); });
       // Never await other Supabase calls inside this callback.
       sb.auth.onAuthStateChange(function (_e, s) { setTimeout(function () { setSession(s); }, 0); });
       function wake() { if (!document.hidden && session) { if (lsGet(LS_DIRTY)) { var l = cc.getState(); upload(l).then(function () { cc.setStatus('Synced ' + hhmm()); }, function () {}); } pull(); } }
       document.addEventListener('visibilitychange', wake);
       window.addEventListener('online', wake);
+      // Fallback for when live updates are unavailable: check every 30 seconds while the tab is open.
+      setInterval(function () { if (session && !document.hidden && !typing()) pull(true); }, 30000);
     },
 
     needsSetup: function () { return !configured; },
@@ -395,6 +436,15 @@ async function flush(){
 function paintSync(){var e=$('#syncline');if(e)e.textContent=ui.sync}
 function needsSetup(){return !!(D.needsSetup&&D.needsSetup())}
 function authNeeded(){return !!(D.auth&&!D.auth.user())}
+function skipLogin(){try{return localStorage.getItem('cc-skip-login')==='1'}catch(e){return false}}
+function gated(){return !!D.auth&&(D.authReady===false||(!D.auth.user()&&!skipLogin()))}
+function loginPage(){
+  var wait=D.authReady===false;
+  return '<div class="login"><div class="login-card"><div class="brand">Command<i>/</i>Centre</div>'+(wait?'<p class="muted" style="margin:0">Loading your account…</p>':
+  '<h2>Sign in</h2><p class="muted" style="margin:0">Sign in to sync your dashboard across all your devices.</p>'+
+  '<form data-form="auth" class="login-form"><label class="lab2" for="ae">Email</label><input id="ae" type="email" autocomplete="email" required><label class="lab2" for="ap">Password</label><input id="ap" type="password" autocomplete="current-password" minlength="6" required><div class="row"><button class="btn" type="submit" data-mode="in">Sign in</button><button class="btn ghost" type="submit" data-mode="up">Create account</button></div></form>'+
+  '<div class="sync" id="syncline" role="status">'+(ui.sync&&ui.sync.indexOf('Signed out')!==0?esc(ui.sync):'')+'</div><button class="linkbtn" data-act="skiplogin">Continue without syncing</button>')+'</div></div>';
+}
 function cfgBtn(){return D.clearConfig?'<button class="btn ghost sm" data-act="clearcfg">'+(ui.confirm==='clearcfg'?'Confirm disconnect':'Disconnect project')+'</button>':''}
 function authPanel(){
   if(needsSetup())return '<div class="panel"><h3>Cloud sync</h3><p class="muted" style="margin:0 0 12px">Connect your Supabase project to sync across devices. Paste the Project URL and the anon key from Supabase, Project Settings, API. They are stored in this browser only.</p><form data-form="setup" class="form"><input id="su" type="url" placeholder="https://xxxx.supabase.co" required aria-label="Supabase project URL" autocomplete="off"><input id="sk" type="text" placeholder="anon key" required aria-label="Supabase anon key" autocomplete="off" spellcheck="false"><button class="btn" type="submit">Save &amp; connect</button></form><div class="sync" id="syncline" style="margin-top:10px">'+esc(ui.sync)+'</div></div>';
@@ -606,6 +656,8 @@ function renderRail(){
 function render(){
   var f=V[ui.view]||V.home;
   var y=window.scrollY;
+  var g=gated();$('.top').hidden=g;
+  if(g){$('#app').innerHTML=loginPage();return}
   $('#app').innerHTML=f();
   renderRail();
   var sel=$('#exsel');if(sel)sel.dispatchEvent(new Event('change',{bubbles:true}));
@@ -656,9 +708,10 @@ var A={
   var txt=JSON.stringify(S,null,2);ui.exportText=txt;render();
   try{var bl=new Blob([txt],{type:'application/json'}),u=URL.createObjectURL(bl),a=document.createElement('a');a.href=u;a.download='command-centre-backup-'+today()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},1000)}catch(e){}
  },
+ skiplogin:function(){try{localStorage.setItem('cc-skip-login','1')}catch(e){}render()},
  clearcfg:function(){if(!asked('clearcfg'))return;D.clearConfig();location.reload()},
  syncnow:function(){if(D.pull)D.pull()},
- signout:async function(){try{await D.auth.signOut();toast('Signed out.')}catch(e){toast('Could not sign out.')}},
+ signout:async function(){try{await D.auth.signOut();try{localStorage.removeItem('cc-skip-login')}catch(e){}toast('Signed out.');render()}catch(e){toast('Could not sign out.')}},
  importtoggle:function(){ui.importOpen=!ui.importOpen;render()},
  doimport:async function(){
   var txt=($('#impt')||{}).value||'';
