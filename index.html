@@ -1,1617 +1,780 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#000000">
-    <title>Command Dashboard</title>
-
-    <!-- Supabase SDK CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-    <!-- Netlify-Optimized PWA Manifest -->
-    <link rel="manifest" href='data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22Command%20Dashboard%22%2C%22short_name%22%3A%22Dashboard%22%2C%22start_url%22%3A%22%2F%22%2C%22scope%22%3A%22%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23000000%22%2C%22theme_color%22%3A%22%23000000%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Crect%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%2300e5ff%22%2F%3E%3C%2Fsvg%3E%22%2C%22sizes%22%3A%22192x192%20512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D'>
-
-    <style>
-        :root {
-            --bg-color: #000000;
-            --surface-color: #111111;
-            --border-color: #222222;
-            --accent: #00e5ff;
-            --accent-dim: rgba(0, 229, 255, 0.15);
-            --text-main: #ffffff;
-            --text-muted: #888888;
-        }
-
-        body.light-mode {
-            --bg-color: #f4f4f6;
-            --surface-color: #ffffff;
-            --border-color: #d1d1d6;
-            --text-main: #111111;
-            --text-muted: #666666;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            padding: 16px;
-            max-width: 480px;
-            margin: 0 auto;
-            transition: background-color 0.2s, color 0.2s;
-        }
-
-        @media (orientation: landscape) {
-            body {
-                max-width: 860px;
-            }
-            .grid-menu {
-                grid-template-columns: repeat(5, 1fr) !important;
-            }
-        }
-
-        header {
-            text-align: center;
-            padding: 16px 0 20px 0;
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 20px;
-        }
-
-        .dashboard-title {
-            font-size: 1.05rem;
-            letter-spacing: 3px;
-            color: var(--accent);
-            font-weight: 700;
-            margin-bottom: 6px;
-            text-transform: uppercase;
-        }
-
-        .time-display {
-            font-size: 2.5rem;
-            font-weight: 800;
-            letter-spacing: -1px;
-            color: var(--text-main);
-        }
-
-        .date-display {
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            margin-top: 2px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .daily-quote {
-            font-size: 0.8rem;
-            color: var(--accent);
-            font-style: italic;
-            margin-top: 10px;
-            padding: 0 10px;
-            line-height: 1.3;
-            opacity: 0.85;
-        }
-
-        .view {
-            display: none;
-            flex: 1;
-            flex-direction: column;
-        }
-
-        .view.active {
-            display: flex;
-        }
-
-        .grid-menu {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            flex: 1;
-            align-content: start;
-            padding-bottom: 20px;
-        }
-
-        .menu-btn {
-            background-color: var(--surface-color);
-            border: 1px solid var(--border-color);
-            border-radius: 14px;
-            padding: 18px 12px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            color: var(--text-main);
-            font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            min-height: 110px;
-        }
-
-        .menu-btn:active {
-            background-color: var(--accent-dim);
-            border-color: var(--accent);
-            transform: scale(0.97);
-        }
-
-        .menu-icon svg {
-            width: 26px;
-            height: 26px;
-            stroke: var(--accent);
-            stroke-width: 2;
-            fill: none;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-
-        .view-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 16px;
-        }
-
-        .view-title {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: var(--accent);
-        }
-
-        .back-btn {
-            background: var(--surface-color);
-            border: 1px solid var(--border-color);
-            color: var(--text-main);
-            padding: 6px 14px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            font-size: 0.85rem;
-        }
-
-        .back-btn:active {
-            background: var(--border-color);
-        }
-
-        .content-card {
-            background: var(--surface-color);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 12px;
-            margin-bottom: 12px;
-        }
-
-        .matrix-toolbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: var(--surface-color);
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            padding: 8px 12px;
-            margin-bottom: 12px;
-        }
-
-        .month-nav {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: var(--text-main);
-        }
-
-        .nav-arrow {
-            background: none;
-            border: none;
-            color: var(--accent);
-            font-size: 1.1rem;
-            cursor: pointer;
-            padding: 2px 6px;
-        }
-
-        .toolbar-btns {
-            display: flex;
-            gap: 6px;
-        }
-
-        .tool-btn {
-            background: var(--bg-color);
-            border: 1px solid var(--border-color);
-            color: var(--text-main);
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        .tool-btn.active-accent {
-            border-color: var(--accent);
-            color: var(--accent);
-        }
-
-        .habit-table {
-            border-collapse: collapse;
-            text-align: center;
-            font-size: 0.8rem;
-        }
-
-        .habit-table th, .habit-table td {
-            border: 1px solid var(--border-color);
-            vertical-align: middle;
-        }
-
-        .habit-table th.day-col {
-            width: 32px;
-            height: 32px;
-            color: var(--text-muted);
-            font-weight: 600;
-            background: var(--bg-color);
-            font-size: 0.75rem;
-        }
-
-        .habit-table th.habit-header {
-            width: 36px;
-            height: 95px;
-            padding: 0;
-            position: relative;
-            background: var(--bg-color);
-        }
-
-        .habit-header span {
-            writing-mode: vertical-rl;
-            transform: rotate(180deg);
-            display: inline-block;
-            white-space: nowrap;
-            font-size: 0.75rem;
-            color: var(--accent);
-            font-weight: 600;
-            max-height: 85px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .grid-cell {
-            width: 36px;
-            height: 32px;
-            background: var(--bg-color);
-            cursor: pointer;
-            transition: background 0.15s;
-        }
-
-        .grid-cell.checked {
-            background: var(--accent);
-        }
-
-        .cal-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 4px;
-            text-align: center;
-        }
-
-        .cal-header-day {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            font-weight: 600;
-            padding: 6px 0;
-        }
-
-        .cal-day {
-            background: var(--bg-color);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            height: 42px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            position: relative;
-            font-size: 0.85rem;
-        }
-
-        .cal-day.empty {
-            background: transparent;
-            border: none;
-            cursor: default;
-        }
-
-        .cal-day.today {
-            border-color: var(--accent);
-            color: var(--accent);
-            font-weight: 700;
-        }
-
-        .cal-day.selected {
-            background: var(--accent-dim);
-            border-color: var(--accent);
-        }
-
-        .event-dot {
-            width: 4px;
-            height: 4px;
-            background: var(--accent);
-            border-radius: 50%;
-            margin-top: 3px;
-        }
-
-        .event-list-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: var(--bg-color);
-            border: 1px solid var(--border-color);
-            padding: 8px 12px;
-            border-radius: 6px;
-            margin-bottom: 6px;
-            font-size: 0.85rem;
-        }
-
-        .project-card, .gym-card, .book-card {
-            background: var(--bg-color);
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            padding: 12px;
-            margin-bottom: 10px;
-        }
-
-        .project-header-row, .gym-header-row, .book-header-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 6px;
-        }
-
-        .project-title, .gym-title, .book-title {
-            font-size: 0.95rem;
-            font-weight: 700;
-            color: var(--text-main);
-        }
-
-        .project-pct, .book-pct {
-            font-size: 0.85rem;
-            font-weight: 700;
-            color: var(--accent);
-        }
-
-        .progress-bar-bg {
-            width: 100%;
-            height: 6px;
-            background: var(--border-color);
-            border-radius: 3px;
-            overflow: hidden;
-            margin-top: 8px;
-            margin-bottom: 10px;
-        }
-
-        .progress-bar-fill {
-            height: 100%;
-            background: var(--accent);
-            width: 0%;
-            transition: width 0.3s ease;
-        }
-
-        .task-item, .exercise-item, .meal-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: var(--bg-color);
-            border: 1px solid var(--border-color);
-            padding: 8px 12px;
-            border-radius: 6px;
-            margin-bottom: 6px;
-            font-size: 0.85rem;
-        }
-
-        .task-left {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .checkbox-task {
-            width: 20px;
-            height: 20px;
-            border: 2px solid var(--border-color);
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            background: var(--bg-color);
-        }
-
-        .checkbox-task.checked {
-            background: var(--accent);
-            border-color: var(--accent);
-        }
-
-        .checkbox-task.checked::after {
-            content: '✓';
-            color: #000;
-            font-weight: bold;
-            font-size: 0.75rem;
-        }
-
-        .photo-gallery {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin-top: 10px;
-        }
-
-        .photo-thumb {
-            width: 100%;
-            height: 80px;
-            object-fit: cover;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-        }
-
-        .habit-controls {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 12px;
-        }
-
-        input[type="text"], input[type="password"], textarea {
-            width: 100%;
-            background: var(--bg-color);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 10px;
-            color: var(--text-main);
-            font-size: 0.9rem;
-        }
-
-        input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
-            border-color: var(--accent);
-            outline: none;
-        }
-
-        .action-btn {
-            background: var(--accent);
-            color: #000;
-            border: none;
-            border-radius: 8px;
-            padding: 0 16px;
-            font-weight: 700;
-            font-size: 0.9rem;
-            cursor: pointer;
-        }
-
-        .action-btn:active {
-            opacity: 0.8;
-        }
-
-        .timer-display {
-            font-size: 3.5rem;
-            font-weight: 800;
-            text-align: center;
-            letter-spacing: -1px;
-            margin: 20px 0;
-            color: var(--accent);
-        }
-
-        .timer-btns {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d1017">
+<title>Command Centre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{color-scheme:light;padding-block:env(safe-area-inset-top,0px) env(safe-area-inset-bottom,0px)}
+body{margin:0}
+[hidden]{display:none!important}
+/* Layout concept: a flight-deck style personal ops board. Sticky module rail on top, a home overview of live tiles, and one focused panel per module. */
+:root{
+  --ah:235;
+  --bg:#eceff5; --surface:#f8f9fc; --surface2:#e2e6f0; --line:#cfd5e4;
+  --fg:#14182a; --muted:#566079;
+  --accent:hsl(var(--ah) 62% 44%); --accent-soft:hsl(var(--ah) 70% 92%); --accent-ink:#ffffff;
+  --good:#14804a; --warn:#a96400; --bad:#b3261e;
+  --display:'Big Shoulders Display','Arial Narrow',Impact,sans-serif;
+  --body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0d1017; --surface:#151a24; --surface2:#1d2331; --line:#272f42;
+  --fg:#e8ebf3; --muted:#8f98b0;
+  --accent:hsl(var(--ah) 82% 72%); --accent-soft:hsl(var(--ah) 40% 20%); --accent-ink:#0d1017;
+  --good:#4cc38a; --warn:#e0a040; --bad:#ff7a70; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d1017; --surface:#151a24; --surface2:#1d2331; --line:#272f42;
+  --fg:#e8ebf3; --muted:#8f98b0;
+  --accent:hsl(var(--ah) 82% 72%); --accent-soft:hsl(var(--ah) 40% 20%); --accent-ink:#0d1017;
+  --good:#4cc38a; --warn:#e0a040; --bad:#ff7a70; color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-block:0 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{margin:0;font-family:var(--display);font-weight:800;letter-spacing:.02em;text-wrap:balance;line-height:1.05}
+h2{font-size:34px;text-transform:uppercase}
+h3{font-size:20px;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.wrap{max-width:1080px;margin:0 auto}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line);
+  margin-inline:calc(-1*max(16px,env(safe-area-inset-left,0px))) calc(-1*max(16px,env(safe-area-inset-right,0px)));
+  padding:10px max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px))}
+.top-in{max-width:1080px;margin:0 auto}
+.brandrow{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.brand{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:.14em;text-transform:uppercase}
+.brand i{font-style:normal;color:var(--accent)}
+.clock{font-family:var(--mono);font-size:15px;color:var(--muted);font-variant-numeric:tabular-nums}
+.rail{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin-top:6px}
+.rail::-webkit-scrollbar{display:none}
+.rail button{flex:none;display:flex;align-items:center;gap:6px;background:none;border:0;border-bottom:2px solid transparent;padding:9px 11px;color:var(--muted);cursor:pointer;font-size:13px;font-weight:500;white-space:nowrap}
+.rail button:hover{color:var(--fg)}
+.rail button[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent)}
+.ico{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+main{padding-top:24px;display:flex;flex-direction:column;gap:20px}
+.head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 16px}
+.head p{margin:4px 0 0;color:var(--muted)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr))}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px;min-width:0}
+.panel>h3{margin-bottom:12px}
+.tile{display:flex;flex-direction:column;gap:6px;text-align:left;cursor:pointer;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;min-width:0}
+.tile:hover{border-color:var(--accent)}
+.tile .lab{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+.tile .big{font-family:var(--display);font-weight:800;font-size:38px;line-height:1;font-variant-numeric:tabular-nums}
+.tile .sub{color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+.bar{height:6px;border-radius:3px;background:var(--surface2);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.bar.over>i{background:var(--warn)}
+.btn{background:var(--accent);color:var(--accent-ink);border:1px solid var(--accent);border-radius:5px;padding:8px 14px;cursor:pointer;font-weight:600;font-size:14px}
+.btn:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent;color:var(--fg);border-color:var(--line)}
+.btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn.danger{background:transparent;color:var(--bad);border-color:var(--bad)}
+.btn.sm{padding:4px 10px;font-size:13px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input,select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:8px 10px;min-width:0;max-width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+textarea{width:100%;min-height:90px;resize:vertical}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);padding:0}
+.form{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.form input[type=text],.form input:not([type]){flex:1 1 160px}
+.form input[type=number]{width:96px}
+.lab2{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.empty{color:var(--muted);padding:18px 4px;text-align:center;border:1px dashed var(--line);border-radius:6px}
+.list{display:flex;flex-direction:column;gap:0;margin:0;padding:0;list-style:none}
+.list>li{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--line);min-width:0}
+.list>li:last-child{border-bottom:0}
+.list .grow{flex:1;min-width:0;overflow-wrap:anywhere}
+.done{text-decoration:line-through;color:var(--muted)}
+.scroll{overflow-x:auto}
+/* habits */
+table.hab{border-collapse:collapse;width:100%;min-width:560px}
+.hab th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500;padding:6px 4px;text-align:center}
+.hab th:first-child,.hab td:first-child{text-align:left}
+.hab td{padding:6px 4px;border-top:1px solid var(--line);text-align:center}
+.hab th.today{color:var(--accent)}
+.dot{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line);background:transparent;cursor:pointer;display:inline-grid;place-items:center;color:var(--accent-ink)}
+.dot:hover{border-color:var(--accent)}
+.dot.on{background:var(--accent);border-color:var(--accent)}
+.dot.future{opacity:.35}
+.streak{font-family:var(--mono);font-size:13px;color:var(--muted);white-space:nowrap}
+.streak b{color:var(--fg)}
+/* calendar */
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal .dow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:center;padding:4px 0}
+.cal button{aspect-ratio:1/1;max-height:72px;width:100%;border:1px solid var(--line);background:var(--bg);border-radius:5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-variant-numeric:tabular-nums}
+.cal button.out{opacity:.4}
+.cal button.today{border-color:var(--accent);color:var(--accent);font-weight:600}
+.cal button.sel{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.cal .pips{display:flex;gap:2px;height:5px}
+.cal .pips i{width:5px;height:5px;border-radius:50%;background:currentColor}
+.split{display:grid;gap:16px;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}
+@media (max-width:760px){.split{grid-template-columns:minmax(0,1fr)}h2{font-size:30px}}
+/* gym */
+.days{display:flex;gap:6px;flex-wrap:wrap}
+.days button{flex:1 1 90px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 10px;cursor:pointer;min-width:0}
+.days button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.days .d{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.days .n{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.setrow{display:grid;grid-template-columns:28px minmax(0,1fr) minmax(0,1fr) 40px;gap:6px;align-items:center;margin-top:6px}
+.setrow input[type=number]{width:100%}
+.hint{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.live{border-color:var(--accent)}
+.pill{display:inline-block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;border-radius:20px;padding:2px 9px;background:var(--accent-soft);color:var(--accent);font-weight:600}
+.spark{width:100%;height:56px;display:block}
+.spark polyline{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.spark circle{fill:var(--accent)}
+.up{color:var(--good)}.down{color:var(--bad)}
+/* calories */
+.ringbox{display:flex;flex-wrap:wrap;gap:20px;align-items:center}
+.ring{width:160px;height:160px;flex:none}
+.ring .trk{fill:none;stroke:var(--surface2);stroke-width:12}
+.ring .val{fill:none;stroke:var(--accent);stroke-width:12;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%}
+.ring.over .val{stroke:var(--warn)}
+.ring text{fill:var(--fg);font-family:var(--display);font-weight:800;text-anchor:middle}
+.ring .sm{fill:var(--muted);font-family:var(--body);font-weight:400;font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.chart text{fill:var(--muted);font-size:10px;font-family:var(--mono);text-anchor:middle}
+.chart .bar1{fill:var(--accent)}.chart .bar1.over{fill:var(--warn)}
+.chart .goal{stroke:var(--muted);stroke-dasharray:3 3;stroke-width:1}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:20px;padding:4px 11px;font-size:13px;cursor:pointer}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+/* timer */
+.timer{display:flex;flex-direction:column;align-items:center;gap:16px;padding:12px 0}
+.timer .t{font-family:var(--display);font-weight:800;font-size:112px;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+@media (max-width:480px){.timer .t{font-size:84px}}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{background:var(--bg);border:0;padding:7px 14px;cursor:pointer;color:var(--muted);font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.seg button+button{border-left:1px solid var(--line)}
+/* notes */
+.notes{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr))}
+.note{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.note.pin{border-color:var(--accent)}
+.note h4{margin:0;font-size:15px;overflow-wrap:anywhere}
+.note p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted);font-size:14px}
+.sw{display:flex;gap:8px;flex-wrap:wrap}
+.sw button{width:34px;height:34px;border-radius:50%;border:2px solid var(--line);cursor:pointer;padding:0}
+.sw button[aria-pressed="true"]{border-color:var(--fg)}
+.sync{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:6px;font-size:14px;z-index:40;max-width:90vw}
+.focusline{display:flex;flex-direction:column;gap:6px}
+.focusline .q{color:var(--muted);font-style:italic}
+.focusline input{font-size:17px;padding:10px 12px}
+@media (prefers-reduced-motion:no-preference){.bar>i,.ring .val{transition:all .35s ease}}
+</style>
 </head>
 <body>
+<div class="top"><div class="top-in">
+  <div class="brandrow"><div class="brand">Command<i>/</i>Centre</div><div class="clock" id="clock">--:--</div></div>
+  <nav class="rail" id="rail" aria-label="Modules"></nav>
+</div></div>
+<div class="wrap"><main id="app"></main></div>
+<div id="toast" class="toast" hidden></div>
 
-    <header>
-        <div class="dashboard-title">Command Dashboard</div>
-        <div class="time-display" id="clock">00:00</div>
-        <div class="date-display" id="date">Loading...</div>
-        <div class="daily-quote" id="quote">"Loading daily focus..."</div>
-    </header>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>if(!window.supabase){document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"><\/script>')}</script>
+<script>
+/* ===== Supabase data layer =====
+   One row per user in public.dashboard_state holds the whole dashboard as JSON.
+   Config comes from the two constants below, or (if they still say YOUR_...) from the setup form in Settings,
+   which stores them in this browser only. */
+(function () {
+  var SUPABASE_URL = 'YOUR_SUPABASE_URL';        // e.g. 'https://abcdxyz.supabase.co'
+  var SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // anon / publishable key
+  var TABLE = 'dashboard_state';
 
-    <!-- AUTH VIEW -->
-    <div id="auth-view" class="view">
-        <div class="content-card" style="max-width: 400px; margin: 20px auto; text-align: center;">
-            <div class="dashboard-title" style="margin-bottom: 16px;">Cloud Sync Login</div>
-            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Sign in to sync your dashboard across all your devices.</div>
-            <input type="text" id="auth-email" placeholder="Email address..." style="margin-bottom: 10px;">
-            <input type="password" id="auth-password" placeholder="Password..." style="margin-bottom: 15px;">
-            <div style="display: flex; gap: 8px;">
-                <button class="action-btn" style="flex: 1; padding: 12px;" onclick="handleLogin()">Sign In</button>
-                <button class="tool-btn" style="flex: 1; padding: 12px; border-color: var(--accent); color: var(--accent);" onclick="handleSignUp()">Sign Up</button>
-            </div>
-        </div>
-    </div>
+  var LS_STATE = 'command-centre-v2', LS_CFG = 'cc-supabase-config', LS_LAST = 'cc-last-user',
+      LS_DIRTY = 'cc-dirty', LS_BACKUP = 'cc-backup-before-sync';
 
-    <!-- HOME / GRID MENU -->
-    <div id="home-view" class="view">
-        <div class="grid-menu">
-            <button class="menu-btn" onclick="switchView('habits-view')">
-                <span class="menu-icon">
-                    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-                </span>
-                Habits
-            </button>
-            <button class="menu-btn" onclick="switchView('calendar-view')">
-                <span class="menu-icon">
-                    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                </span>
-                Calendar
-            </button>
-            <button class="menu-btn" onclick="switchView('projects-view')">
-                <span class="menu-icon">
-                    <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                </span>
-                Projects
-            </button>
-            <button class="menu-btn" onclick="switchView('gym-view')">
-                <span class="menu-icon">
-                    <svg viewBox="0 0 24 24"><path d="M6.5 6.5h11M6.5 17.5h11M2 10h20M2 14h20M4 6h2v12H4zM18 6h2v12h-2z"/></svg>
-                </span>
-                Gym Plan
-            </button>
-            <button class="menu-btn" onclick="switchView('gym-stats-view')">
-                <span class="menu-icon">
-                    <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>
-                </span>
-                Gym Stats
-            </button>
-            <button class="menu-btn" onclick="switchView('calories-view')">
-                <span class="menu-icon">
-                    <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
-                </span>
-                Calories
-            </button>
-            <button class="menu-btn" onclick="switchView('books-view')">
-                <span class="menu-icon">
-                    <svg viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5z"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-                </span>
-                Book Tracker
-            </button>
-            <button class="menu-btn" onclick="switchView('notes-view')">
-                <span class="menu-icon">
-                    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                </span>
-                Quick Notes
-            </button>
-            <button class="menu-btn" onclick="switchView('pomodoro-view')">
-                <span class="menu-icon">
-                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                </span>
-                Focus Timer
-            </button>
-            <button class="menu-btn" onclick="switchView('settings-view')">
-                <span class="menu-icon">
-                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                </span>
-                Settings
-            </button>
-        </div>
-    </div>
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
 
-    <!-- HABITS VIEW -->
-    <div id="habits-view" class="view">
-        <div class="view-header">
-            <div class="view-title">Habit Tracker Matrix</div>
-            <button class="back-btn" onclick="switchView('home-view')">Home Menu</button>
-        </div>
+  function real(v) { return !!v && v.indexOf('YOUR_') !== 0; }
+  var fromFile = real(SUPABASE_URL) && real(SUPABASE_ANON_KEY);
+  var url = fromFile ? SUPABASE_URL : '', key = fromFile ? SUPABASE_ANON_KEY : '';
+  if (!fromFile) {
+    try { var c = JSON.parse(lsGet(LS_CFG) || 'null'); if (c && c.url && c.key) { url = c.url; key = c.key; } } catch (e) {}
+  }
+  var configured = !!(url && key);
+  var libOk = !!window.supabase;
+  var sb = null;
+  if (configured && libOk) {
+    try { sb = window.supabase.createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true } }); } catch (e) { sb = null; }
+  }
+  var session = null, cc = null, busy = false;
 
-        <div class="matrix-toolbar">
-            <div class="month-nav">
-                <button class="nav-arrow" onclick="changeHabitMonth(-1)">‹</button>
-                <span id="habit-month-label">October 2026</span>
-                <button class="nav-arrow" onclick="changeHabitMonth(1)">›</button>
-            </div>
-            <div class="toolbar-btns">
-                <button class="tool-btn" onclick="currentHabitMonth()">Current</button>
-                <button class="tool-btn active-accent" onclick="openHabitManager()">Edit Habits</button>
-            </div>
-        </div>
+  function hhmm() { var d = new Date(); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+  function readCache() { try { var s = lsGet(LS_STATE); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
+  function writeCache(state) { lsSet(LS_STATE, JSON.stringify(state)); }
+  function niceError(e) {
+    var m = (e && e.message) || 'Something went wrong.';
+    if (/relation .* does not exist|schema cache|PGRST205/i.test(m)) return 'Table missing. Run the SQL setup in Supabase first.';
+    if (/Invalid API key|apikey/i.test(m)) return 'Supabase rejected the API key. Check it in Settings.';
+    if (/Failed to fetch|NetworkError|network/i.test(m)) return 'No connection to Supabase.';
+    return m;
+  }
 
-        <div class="content-card" id="habit-input-container" style="display:none;">
-            <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Add New Habit</div>
-            <div class="habit-controls" style="margin-bottom: 0;">
-                <input type="text" id="new-habit-input" placeholder="Habit name...">
-                <button class="action-btn" onclick="addHabit()">Add</button>
-            </div>
-        </div>
+  async function upload(state) {
+    var r = await sb.from(TABLE).upsert({ user_id: session.user.id, data: state, updated_at: new Date().toISOString() });
+    if (r.error) throw r.error;
+    lsDel(LS_DIRTY);
+    lsSet(LS_LAST, session.user.id);
+  }
 
-        <div class="content-card" style="overflow-x: auto;">
-            <div id="table-container" style="display: flex; justify-content: flex-start;"></div>
-        </div>
-    </div>
-
-    <!-- CALENDAR VIEW -->
-    <div id="calendar-view" class="view">
-        <div class="view-header">
-            <div class="view-title">Calendar & Events</div>
-            <button class="back-btn" onclick="switchView('home-view')">Home Menu</button>
-        </div>
-
-        <div class="matrix-toolbar">
-            <div class="month-nav">
-                <button class="nav-arrow" onclick="changeCalMonth(-1)">‹</button>
-                <span id="cal-month-label">October 2026</span>
-                <button class="nav-arrow" onclick="changeCalMonth(1)">›</button>
-            </div>
-            <div class="toolbar-btns">
-                <button class="tool-btn" onclick="currentCalMonth()">Current</button>
-            </div>
-        </div>
-
-        <div class="content-card">
-            <div class="cal-grid" id="cal-header-row">
-                <div class="cal-header-day">Mo</div>
-                <div class="cal-header-day">Tu</div>
-                <div class="cal-header-day">We</div>
-                <div class="cal-header-day">Th</div>
-                <div class="cal-header-day">Fr</div>
-                <div class="cal-header-day">Sa</div>
-                <div class="cal-header-day">Su</div>
-            </div>
-            <div class="cal-grid" id="cal-days-grid" style="margin-top: 6px;"></div>
-        </div>
-
-        <div class="content-card">
-            <div id="selected-date-title" style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Select a date</div>
-            <div id="event-list-container">
-                <div style="color: var(--text-muted); font-size: 0.85rem;">No events scheduled for this day.</div>
-            </div>
-            <div class="habit-controls" style="margin-top: 12px; margin-bottom: 0;">
-                <input type="text" id="new-event-input" placeholder="Add event or note...">
-                <button class="action-btn" onclick="addEvent()">Add</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- PROJECTS VIEW -->
-    <div id="projects-view" class="view">
-        <div id="projects-list-container">
-            <div class="view-header">
-                <div class="view-title">Active Projects</div>
-                <button class="back-btn" onclick="switchView('home-view')">Home Menu</button>
-            </div>
-
-            <div class="content-card">
-                <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Create New Project</div>
-                <input type="text" id="new-proj-title" placeholder="Project name..." style="margin-bottom: 8px;">
-                <input type="text" id="new-proj-desc" placeholder="Brief description..." style="margin-bottom: 8px;">
-                <button class="action-btn" style="width: 100%; padding: 10px;" onclick="addProject()">Add Project</button>
-            </div>
-
-            <div id="projects-cards-list"></div>
-        </div>
-
-        <div id="project-detail-container" style="display: none;">
-            <div class="view-header">
-                <div class="view-title" id="detail-proj-title">Project Detail</div>
-                <button class="back-btn" onclick="backToProjectsList()">Back to Projects</button>
-            </div>
-            <div class="content-card">
-                <div id="detail-proj-desc" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 10px;"></div>
-                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; font-weight: 700;">
-                    <span>Completion</span>
-                    <span id="detail-proj-pct" style="color: var(--accent);">0%</span>
-                </div>
-                <div class="progress-bar-bg">
-                    <div class="progress-bar-fill" id="detail-proj-bar"></div>
-                </div>
-            </div>
-
-            <div class="content-card">
-                <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Tasks</div>
-                <div id="detail-tasks-list"></div>
-                <div class="habit-controls" style="margin-top: 10px; margin-bottom: 0;">
-                    <input type="text" id="new-task-input" placeholder="New task...">
-                    <button class="action-btn" onclick="addTask()">Add</button>
-                </div>
-            </div>
-
-            <div class="content-card">
-                <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Photos</div>
-                <input type="file" id="photo-file-input" accept="image/*" style="display:none;" onchange="handlePhotoUpload(event)">
-                <button class="action-btn" style="width:100%; padding:10px; margin-bottom: 8px;" onclick="document.getElementById('photo-file-input').click()">+ Attach Photo</button>
-                <div class="photo-gallery" id="detail-photo-gallery"></div>
-            </div>
-
-            <div class="content-card" style="text-align: center;">
-                <button class="tool-btn" style="color: red; border-color: red; width: 100%; padding: 8px;" onclick="deleteCurrentProject()">Delete Project</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- GYM WORKOUT PLANNER VIEW -->
-    <div id="gym-view" class="view">
-        <div id="gym-list-container">
-            <div class="view-header">
-                <div class="view-title">Weekly Gym Plan</div>
-                <button class="back-btn" onclick="switchView('home-view')">Home Menu</button>
-            </div>
-
-            <div class="content-card">
-                <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Create Routine Day</div>
-                <input type="text" id="new-gym-title" placeholder="Routine Name (e.g., Push Day A)..." style="margin-bottom: 8px;">
-                <input type="text" id="new-gym-desc" placeholder="Target Muscle Groups..." style="margin-bottom: 8px;">
-                <button class="action-btn" style="width: 100%; padding: 10px;" onclick="addGymRoutine()">Add Routine</button>
-            </div>
-
-            <div id="gym-cards-list"></div>
-        </div>
-
-        <div id="gym-detail-container" style="display: none;">
-            <div class="view-header">
-                <div class="view-title" id="detail-gym-title">Routine Template</div>
-                <button class="back-btn" onclick="backToGymList()">Back to Plan</button>
-            </div>
-            <div class="content-card">
-                <div id="detail-gym-desc" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 12px;"></div>
-                <button class="action-btn" style="width: 100%; padding: 12px; font-weight: 700; margin-bottom: 4px;" onclick="startActiveWorkout()">⚡ Start Live Workout Session</button>
-            </div>
-
-            <div class="content-card">
-                <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Template Exercises</div>
-                <div id="detail-exercises-list"></div>
-                <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
-                    <input type="text" id="new-ex-name" placeholder="Exercise name (e.g. Incline Bench Press)">
-                    <div style="display: flex; gap: 8px;">
-                        <input type="text" id="new-ex-sets" placeholder="Sets (e.g. 4)">
-                        <input type="text" id="new-ex-reps" placeholder="Target Reps (e.g. 8-10)">
-                        <input type="text" id="new-ex-weight" placeholder="Target Wt (e.g. 75kg)">
-                    </div>
-                    <button class="action-btn" style="width: 100%; padding: 10px;" onclick="addExerciseTemplate()">Add to Routine Template</button>
-                </div>
-            </div>
-
-            <div class="content-card" style="text-align: center;">
-                <button class="tool-btn" style="color: red; border-color: red; width: 100%; padding: 8px;" onclick="deleteCurrentGymRoutine()">Delete Routine</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ACTIVE WORKOUT SESSION LOGGER VIEW -->
-    <div id="gym-active-view" class="view">
-        <div class="view-header">
-            <div class="view-title" id="active-workout-title">Live Workout Session</div>
-            <button class="back-btn" onclick="cancelActiveWorkout()">Cancel</button>
-        </div>
-        <div class="content-card" style="background: var(--accent-dim); border-color: var(--accent);">
-            <div style="font-size: 0.85rem; color: var(--accent); font-weight: 700; margin-bottom: 2px;">SESSION IN PROGRESS</div>
-            <div style="font-size: 0.8rem; color: var(--text-main);">Log your actual performance for each exercise below. Hit finish when done.</div>
-        </div>
-        <div class="content-card">
-            <div id="active-exercises-container"></div>
-            <button class="action-btn" style="width: 100%; padding: 12px; margin-top: 12px; font-weight: 700;" onclick="finishActiveWorkout()">✓ Finish & Save Workout</button>
-        </div>
-    </div>
-
-    <!-- GYM STATS & ANALYTICS VIEW -->
-    <div id="gym-stats-view" class="view">
-        <div class="view-header">
-            <div class="view-title">Gym Stats & Progression</div>
-            <button class="back-btn" onclick="switchView('home-view')">Home Menu</button>
-        </div>
-        <div class="content-card">
-            <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 6px;">Progressive Overload Log</div>
-            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">Review past completed sessions and weight/reps progression.</div>
-            <div id="gym-history-container"></div>
-        </div>
-    </div>
-
-    <!-- CALORIE TRACKER VIEW -->
-    <div id="calories-view" class="view">
-        <div class="view-header">
-            <div class="view-title">Calorie Tracker</div>
-            <button class="back-btn" onclick="switchView('home-view')">Home Menu</button>
-        </div>
-        <div class="content-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Daily Goal</div>
-                    <div style="font-size: 1.2rem; font-weight: 800; color: var(--accent);" id="calorie-target-display">3300 kcal</div>
-                </div>
-                <div>
-                    <button class="tool-btn" onclick="editCalorieTarget()">Edit Goal</button>
-                </div>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 700; margin-bottom: 4px;">
-                <span>Consumed: <span id="calories-consumed" style="color: var(--accent);">0</span> kcal</span>
-                <span>Remaining: <span id="calories-remaining">3300</span> kcal</span>
-            </div>
-            <div class="progress-bar-bg" style="margin-bottom: 0;">
-                <div class="progress-bar-fill" id="calorie-progress-bar" style="width: 0%;"></div>
-            </div>
-        </div>
-
-        <div class="content-card">
-            <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Log Meal</div>
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-                <input type="text" id="new-meal-name" placeholder="Meal description (e.g. Oatmeal & Lactose-Free Milk)">
-                <input type="text" id="new-meal-cals" placeholder="Calories (e.g. 650)">
-                <button class="action-btn" style="width: 100%; padding: 10px;" onclick="addMeal()">Add Meal</button>
-            </div>
-        </div>
-
-        <div class="content-card">
-            <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Today's Meals</div>
-            <div id="meals-list-container">
-                <div style="color: var(--text-muted); font-size: 0.85rem;">No meals logged today yet.</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- BOOK TRACKER VIEW -->
-    <div id="books-view" class="view">
-        <div class="view-header">
-            <div class="view-title">Book Reading Tracker</div>
-            <button class="back-btn" onclick="switchView('home-view')">Home Menu</button>
-        </div>
-        <div class="content-card">
-            <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Add New Book</div>
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-                <input type="text" id="new-book-title" placeholder="Book Title...">
-                <input type="text" id="new-book-author" placeholder="Author...">
-                <input type="text" id="new-book-total" placeholder="Total Pages (e.g. 350)">
-                <button class="action-btn" style="width: 100%; padding: 10px;" onclick="addBook()">Add Book</button>
-            </div>
-        </div>
-        <div class="content-card">
-            <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Reading Library</div>
-            <div id="books-list-container">
-                <div style="color: var(--text-muted); font-size: 0.85rem;">No books added yet.</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- QUICK NOTES VIEW -->
-    <div id="notes-view" class="view">
-        <div class="view-header">
-            <div class="view-title">Quick Notes</div>
-            <button class="back-btn" onclick="switchView('home-view')">Home Menu</button>
-        </div>
-        <div class="content-card" style="flex: 1; display: flex; flex-direction: column;">
-            <textarea id="scratchpad-textarea" placeholder="Jot down rapid notes, math formulas, or code snippets here... Auto-saves instantly." style="flex: 1; min-height: 350px; resize: none; line-height: 1.4;" oninput="saveScratchpad()"></textarea>
-        </div>
-    </div>
-
-    <!-- FOCUS TIMER VIEW -->
-    <div id="pomodoro-view" class="view">
-        <div class="view-header">
-            <div class="view-title">Focus Timer</div>
-            <button class="back-btn" onclick="switchView('home-view')">Home Menu</button>
-        </div>
-        <div class="content-card" style="text-align: center; padding: 30px 16px;">
-            <div style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;" id="timer-mode-label">Deep Work Session</div>
-            <div class="timer-display" id="timer-clock">25:00</div>
-            <div class="timer-btns">
-                <button class="action-btn" style="padding: 12px 24px;" id="timer-start-btn" onclick="toggleTimer()">Start</button>
-                <button class="tool-btn" style="padding: 12px 24px; font-size: 0.9rem;" onclick="resetTimer()">Reset</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- SETTINGS VIEW -->
-    <div id="settings-view" class="view">
-        <div class="view-header">
-            <div class="view-title">Settings & Data</div>
-            <button class="back-btn" onclick="switchView('home-view')">Home Menu</button>
-        </div>
-
-        <div class="content-card">
-            <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 10px;">Cloud Account</div>
-            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 12px;">
-                <span id="settings-user-email" style="color: var(--text-muted);">Not signed in</span>
-                <button class="tool-btn" style="color: red; border-color: red;" onclick="handleLogout()">Sign Out</button>
-            </div>
-        </div>
-
-        <div class="content-card">
-            <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 10px;">Appearance & Theme</div>
-            <div style="display: flex; flex-direction: column; gap: 12px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
-                    <span>Light Mode</span>
-                    <input type="checkbox" id="light-mode-checkbox" onchange="toggleLightMode(this)" style="width: 20px; height: 20px; accent-color: var(--accent); cursor: pointer;">
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
-                    <span>Accent Color</span>
-                    <input type="color" id="accent-color-input" value="#00e5ff" onchange="changeAccentColor(this.value)" style="background: none; border: 1px solid var(--border-color); width: 44px; height: 30px; border-radius: 6px; cursor: pointer;">
-                </div>
-            </div>
-        </div>
-
-        <div class="content-card">
-            <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 8px;">Data Management</div>
-            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-                <button class="action-btn" style="flex: 1; padding: 10px; font-size: 0.85rem;" onclick="exportData()">Export JSON</button>
-                <input type="file" id="import-file-input" accept=".json" style="display:none;" onchange="importData(event)">
-                <button class="tool-btn" style="flex: 1; padding: 10px; font-size: 0.85rem; border-color: var(--accent); color: var(--accent);" onclick="document.getElementById('import-file-input').click()">Import JSON</button>
-            </div>
-        </div>
-
-        <div class="content-card">
-            <div style="font-size: 0.9rem; font-weight: 700; color: red; margin-bottom: 8px;">Danger Zone</div>
-            <button class="action-btn" style="width:100%; background:red; color:#fff; border: none; padding: 12px;" onclick="resetAllData()">Factory Reset All Data</button>
-        </div>
-    </div>
-
-    <script>
-        // --- SUPABASE CLIENT SETUP ---
-        const SUPABASE_URL = 'https://vjyawtxmobxgclrwsgfx.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_8kujQY7du_nwIN8DvYvBxw_MeW-ZsjN';
-        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        let currentUser = null;
-
-        // Service Worker registration for Netlify PWA
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                const swCode = `
-                    self.addEventListener('install', (e) => { self.skipWaiting(); });
-                    self.addEventListener('activate', (e) => { e.waitUntil(clients.claim()); });
-                    self.addEventListener('fetch', (e) => { e.respondWith(fetch(e.request).catch(() => caches.match(e.request))); });
-                `;
-                const blob = new Blob([swCode], { type: 'text/javascript' });
-                navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(err => console.log('SW failed:', err));
-            });
+  async function pull() {
+    if (!sb || !session || !cc || busy) return;
+    busy = true;
+    cc.setStatus('Syncing…');
+    try {
+      var r = await sb.from(TABLE).select('data').eq('user_id', session.user.id).maybeSingle();
+      if (r.error) throw r.error;
+      var remote = r.data && r.data.data;
+      var local = cc.getState();
+      if (remote && remote.habits) {
+        var neverSynced = lsGet(LS_LAST) !== session.user.id;
+        if (neverSynced || (remote.updated || 0) > (local.updated || 0)) {
+          if (neverSynced) lsSet(LS_BACKUP, JSON.stringify(local)); // keep this device's old data, just in case
+          writeCache(remote);
+          cc.replaceState(remote);
+          lsSet(LS_LAST, session.user.id); lsDel(LS_DIRTY);
+          cc.setStatus('Synced ' + hhmm() + (neverSynced ? '. Loaded your cloud data.' : ''));
+        } else if ((local.updated || 0) > (remote.updated || 0) || lsGet(LS_DIRTY)) {
+          await upload(local);
+          cc.setStatus('Synced ' + hhmm());
+        } else {
+          lsSet(LS_LAST, session.user.id);
+          cc.setStatus('Synced ' + hhmm());
         }
-
-        // --- AUTHENTICATION FLOW ---
-        async function initAuth() {
-            const { data: { session } } = await _supabase.auth.getSession();
-            if (session) {
-                currentUser = session.user;
-                document.getElementById('settings-user-email').textContent = currentUser.email;
-                switchView('home-view');
-                await loadAllDataFromCloud();
-            } else {
-                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-                document.getElementById('auth-view').classList.add('active');
-            }
-        }
-
-        async function handleLogin() {
-            const email = document.getElementById('auth-email').value;
-            const password = document.getElementById('auth-password').value;
-            const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
-            if (error) alert(error.message);
-            else initAuth();
-        }
-
-        async function handleSignUp() {
-            const email = document.getElementById('auth-email').value;
-            const password = document.getElementById('auth-password').value;
-            const { data, error } = await _supabase.auth.signUp({ email, password });
-            if (error) alert(error.message);
-            else alert('Signup successful! Check your email or sign in.');
-        }
-
-        async function handleLogout() {
-            await _supabase.auth.signOut();
-            currentUser = null;
-            location.reload();
-        }
-
-        // --- CLOUD SYNC & DATA LOADERS ---
-        async function loadAllDataFromCloud() {
-            if (!currentUser) return;
-            try {
-                // Load Habits
-                const { data: hData } = await _supabase.from('habits').select('*').eq('user_id', currentUser.id);
-                if (hData && hData.length > 0) habits = hData;
-
-                // Load Habit Logs
-                const { data: lData } = await _supabase.from('habit_logs').select('*').eq('user_id', currentUser.id);
-                if (lData) {
-                    habitLogs = {};
-                    lData.forEach(row => {
-                        const [y, m, d] = row.date.split('-');
-                        const key = `${y}-${parseInt(m)-1}-${parseInt(d)}-${row.habit_id}`;
-                        habitLogs[key] = row.completed;
-                    });
-                }
-
-                // Load Calendar Events
-                const { data: cData } = await _supabase.from('calendar_events').select('*').eq('user_id', currentUser.id);
-                if (cData) {
-                    calendarEvents = {};
-                    cData.forEach(row => { calendarEvents[row.date] = row.events; });
-                }
-
-                // Load Projects
-                const { data: pData } = await _supabase.from('projects').select('*').eq('user_id', currentUser.id);
-                if (pData && pData.length > 0) projects = pData;
-
-                // Load Gym Routines & History
-                const { data: gData } = await _supabase.from('gym_routines').select('*').eq('user_id', currentUser.id);
-                if (gData && gData.length > 0) gymRoutines = gData;
-
-                const { data: ghData } = await _supabase.from('gym_history').select('*').eq('user_id', currentUser.id);
-                if (ghData && ghData.length > 0) gymHistory = ghData;
-
-                // Load Books
-                const { data: bData } = await _supabase.from('books').select('*').eq('user_id', currentUser.id);
-                if (bData && bData.length > 0) books = bData;
-
-                // Load Quick Notes
-                const { data: nData } = await _supabase.from('quick_notes').select('*').eq('user_id', currentUser.id).single();
-                if (nData) document.getElementById('scratchpad-textarea').value = nData.content || '';
-
-                renderHabitMatrix();
-                renderProjectsList();
-                renderGymList();
-                renderCalories();
-                renderBooks();
-            } catch (err) {
-                console.log('Using local cache offline mode');
-            }
-        }
-
-        // --- CLOCK & QUOTES ---
-        const quotes = [
-            "\"We are what we repeatedly do. Excellence, then, is not an act, but a habit.\" — Aristotle",
-            "\"Simplicity is prerequisite for reliability.\" — Edsger W. Dijkstra",
-            "\"First principles thinking: boil things down to fundamental truths and build up.\" — Elon Musk",
-            "\"The way to get started is to quit talking and begin doing.\" — Walt Disney",
-            "\"Excellence is not an exception; it is a prevailing attitude.\" — Colin Powell",
-            "\"Focus is a matter of deciding what things you're not going to do.\" — John Carmack",
-            "\"Done is better than perfect.\" — Sheryl Sandberg",
-            "\"Small disciplines repeated with consistency every day lead to great achievements gained slowly.\" — John C. Maxwell"
-        ];
-
-        function updateClock() {
-            const now = new Date();
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            document.getElementById('clock').textContent = `${hours}:${minutes}`;
-            document.getElementById('date').textContent = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-
-            const dateString = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
-            let hash = 0;
-            for (let i = 0; i < dateString.length; i++) hash = dateString.charCodeAt(i) + ((hash << 5) - hash);
-            document.getElementById('quote').textContent = quotes[Math.abs(hash) % quotes.length];
-        }
-        setInterval(updateClock, 1000);
-        updateClock();
-
-        function switchView(viewId) {
-            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            document.getElementById(viewId).classList.add('active');
-            if(viewId === 'calendar-view') renderCalendar();
-            if(viewId === 'projects-view') backToProjectsList();
-            if(viewId === 'gym-view') backToGymList();
-            if(viewId === 'gym-stats-view') renderGymStats();
-            if(viewId === 'calories-view') renderCalories();
-            if(viewId === 'books-view') renderBooks();
-        }
-
-        // --- THEME & ACCENT MANAGEMENT ---
-        function applySavedTheme() {
-            if (localStorage.getItem('dash_light_mode') === 'true') {
-                document.body.classList.add('light-mode');
-                document.getElementById('light-mode-checkbox').checked = true;
-            }
-            const savedAccent = localStorage.getItem('dash_accent_color');
-            if (savedAccent) setAccentColor(savedAccent, false);
-        }
-
-        function toggleLightMode(cb) {
-            document.body.classList.toggle('light-mode', cb.checked);
-            localStorage.setItem('dash_light_mode', cb.checked);
-        }
-
-        function changeAccentColor(hex) { setAccentColor(hex, true); }
-
-        function setAccentColor(hex, save) {
-            document.documentElement.style.setProperty('--accent', hex);
-            let r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16);
-            if (!isNaN(r)) document.documentElement.style.setProperty('--accent-dim', `rgba(${r}, ${g}, ${b}, 0.15)`);
-            if (save) localStorage.setItem('dash_accent_color', hex);
-        }
-
-        // --- HABITS ---
-        let habits = JSON.parse(localStorage.getItem('dash_matrix_habits')) || [{id:1, name:'Workout'}, {id:2, name:'Code / HW'}];
-        let habitLogs = JSON.parse(localStorage.getItem('dash_matrix_logs')) || {};
-        let habitDate = new Date();
-        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
-        function getDaysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
-        function changeHabitMonth(dir) { habitDate.setMonth(habitDate.getMonth() + dir); renderHabitMatrix(); }
-        function currentHabitMonth() { habitDate = new Date(); renderHabitMatrix(); }
-
-        let isEditingHabits = false;
-        function openHabitManager() {
-            isEditingHabits = !isEditingHabits;
-            document.getElementById('habit-input-container').style.display = isEditingHabits ? 'block' : 'none';
-            renderHabitMatrix();
-        }
-
-        function renderHabitMatrix() {
-            const year = habitDate.getFullYear(), month = habitDate.getMonth();
-            document.getElementById('habit-month-label').textContent = `${monthNames[month]} ${year}`;
-            const container = document.getElementById('table-container');
-
-            if (habits.length === 0) {
-                container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">No habits added yet.</div>';
-                return;
-            }
-
-            let html = '<table class="habit-table"><thead><tr><th class="day-col">D</th>';
-            habits.forEach(h => {
-                let del = isEditingHabits ? ` <span onclick="deleteHabit(${h.id})" style="color:red; cursor:pointer;">✕</span>` : '';
-                html += `<th class="habit-header"><span>${h.name}${del}</span></th>`;
-            });
-            html += '</tr></thead><tbody>';
-
-            for (let day = 1; day <= getDaysInMonth(year, month); day++) {
-                html += `<tr><td class="day-col">${day}</td>`;
-                habits.forEach(h => {
-                    const key = `${year}-${month}-${day}-${h.id}`;
-                    html += `<td class="grid-cell ${habitLogs[key] ? 'checked' : ''}" onclick="toggleCell(${h.id}, ${year}, ${month}, ${day})"></td>`;
-                });
-                html += '</tr>';
-            }
-            html += '</tbody></table>';
-            container.innerHTML = html;
-            localStorage.setItem('dash_matrix_habits', JSON.stringify(habits));
-            localStorage.setItem('dash_matrix_logs', JSON.stringify(habitLogs));
-        }
-
-        async function toggleCell(habitId, year, month, day) {
-            const key = `${year}-${month}-${day}-${habitId}`;
-            habitLogs[key] = !habitLogs[key];
-            renderHabitMatrix();
-            if (currentUser) {
-                const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-                await _supabase.from('habit_logs').upsert({ user_id: currentUser.id, habit_id: habitId, date: dateStr, completed: habitLogs[key] }, { onConflict: 'user_id,habit_id,date' });
-            }
-        }
-
-        async function addHabit() {
-            const input = document.getElementById('new-habit-input');
-            if (!input.value.trim()) return;
-            const newH = { id: Date.now(), name: input.value.trim() };
-            habits.push(newH);
-            input.value = '';
-            renderHabitMatrix();
-            if (currentUser) await _supabase.from('habits').insert({ id: newH.id, user_id: currentUser.id, name: newH.name });
-        }
-
-        async function deleteHabit(id) {
-            habits = habits.filter(h => h.id !== id);
-            renderHabitMatrix();
-            if (currentUser) await _supabase.from('habits').delete().eq('id', id).eq('user_id', currentUser.id);
-        }
-
-        // --- CALENDAR ---
-        let calDate = new Date(), selectedDate = new Date();
-        let calendarEvents = JSON.parse(localStorage.getItem('dash_calendar_events')) || {};
-
-        function changeCalMonth(dir) { calDate.setMonth(calDate.getMonth() + dir); renderCalendar(); }
-        function currentCalMonth() { calDate = new Date(); renderCalendar(); }
-
-        function renderCalendar() {
-            const year = calDate.getFullYear(), month = calDate.getMonth();
-            document.getElementById('cal-month-label').textContent = `${monthNames[month]} ${year}`;
-            const gridEl = document.getElementById('cal-days-grid');
-            gridEl.innerHTML = '';
-
-            const firstDay = (new Date(year, month, 1).getDay() + 6) % 7;
-            const total = getDaysInMonth(year, month), today = new Date();
-
-            for (let i = 0; i < firstDay; i++) gridEl.appendChild(Object.assign(document.createElement('div'), {className: 'cal-day empty'}));
-
-            for (let day = 1; day <= total; day++) {
-                const dayCell = document.createElement('div');
-                dayCell.className = 'cal-day';
-                const dateKey = `${year}-${month}-${day}`;
-                if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) dayCell.classList.add('today');
-                if (day === selectedDate.getDate() && month === selectedDate.getMonth() && year === selectedDate.getFullYear()) dayCell.classList.add('selected');
-
-                dayCell.innerHTML = `<span>${day}</span>`;
-                if (calendarEvents[dateKey]?.length > 0) dayCell.appendChild(Object.assign(document.createElement('div'), {className: 'event-dot'}));
-
-                dayCell.onclick = () => { selectedDate = new Date(year, month, day); renderCalendar(); renderSelectedEvents(); };
-                gridEl.appendChild(dayCell);
-            }
-            renderSelectedEvents();
-        }
-
-        function renderSelectedEvents() {
-            const key = `${selectedDate.getFullYear()}-${selectedDate.getMonth()}-${selectedDate.getDate()}`;
-            document.getElementById('selected-date-title').textContent = `Events for ${monthNames[selectedDate.getMonth()]} ${selectedDate.getDate()}, ${selectedDate.getFullYear()}`;
-            const container = document.getElementById('event-list-container');
-            container.innerHTML = '';
-            const events = calendarEvents[key] || [];
-            if (events.length === 0) { container.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem;">No events scheduled.</div>'; return; }
-            events.forEach((ev, idx) => {
-                container.innerHTML += `<div class="event-list-item"><span>${ev}</span><span onclick="deleteEvent('${key}', ${idx})" style="color:red; cursor:pointer;">✕</span></div>`;
-            });
-        }
-
-        async function addEvent() {
-            const input = document.getElementById('new-event-input');
-            if (!input.value.trim()) return;
-            const key = `${selectedDate.getFullYear()}-${selectedDate.getMonth()}-${selectedDate.getDate()}`;
-            if (!calendarEvents[key]) calendarEvents[key] = [];
-            calendarEvents[key].push(input.value.trim());
-            input.value = '';
-            renderCalendar();
-            localStorage.setItem('dash_calendar_events', JSON.stringify(calendarEvents));
-            if (currentUser) await _supabase.from('calendar_events').upsert({ user_id: currentUser.id, date: key, events: calendarEvents[key] }, { onConflict: 'user_id,date' });
-        }
-
-        async function deleteEvent(key, idx) {
-            calendarEvents[key].splice(idx, 1);
-            if (calendarEvents[key].length === 0) delete calendarEvents[key];
-            renderCalendar();
-            localStorage.setItem('dash_calendar_events', JSON.stringify(calendarEvents));
-            if (currentUser) await _supabase.from('calendar_events').upsert({ user_id: currentUser.id, date: key, events: calendarEvents[key] || [] }, { onConflict: 'user_id,date' });
-        }
-
-        // --- PROJECTS ---
-        let projects = JSON.parse(localStorage.getItem('dash_projects')) || [{id:1, title:'PocketDAC Handheld', desc:'ESP32 Audio Player', tasks:[], photos:[]}];
-        let currentProjectId = null;
-
-        function renderProjectsList() {
-            const container = document.getElementById('projects-cards-list');
-            container.innerHTML = '';
-            if (projects.length === 0) { container.innerHTML = '<div class="content-card" style="text-align:center; color:var(--text-muted);">No projects.</div>'; return; }
-            projects.forEach(p => {
-                const total = p.tasks.length, done = p.tasks.filter(t => t.done).length;
-                const pct = total === 0 ? 0 : Math.round((done / total) * 100);
-                container.innerHTML += `
-                    <div class="project-card">
-                        <div class="project-header-row"><span class="project-title">${p.title}</span><span class="project-pct">${pct}%</span></div>
-                        <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:6px;">${p.desc || ''}</div>
-                        <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: ${pct}%;"></div></div>
-                        <button class="tool-btn active-accent" style="width:150px; padding:6px;" onclick="openProjectDetail(${p.id})">Open Workspace →</button>
-                    </div>`;
-            });
-            localStorage.setItem('dash_projects', JSON.stringify(projects));
-        }
-
-        async function addProject() {
-            const title = document.getElementById('new-proj-title').value.trim();
-            if (!title) return;
-            const newP = { id: Date.now(), title, desc: document.getElementById('new-proj-desc').value.trim(), tasks: [], photos: [] };
-            projects.push(newP);
-            document.getElementById('new-proj-title').value = '';
-            document.getElementById('new-proj-desc').value = '';
-            renderProjectsList();
-            if (currentUser) await _supabase.from('projects').insert({ id: newP.id, user_id: currentUser.id, title: newP.title, desc: newP.desc, tasks: [], photos: [] });
-        }
-
-        function openProjectDetail(id) { currentProjectId = id; document.getElementById('projects-list-container').style.display = 'none'; document.getElementById('project-detail-container').style.display = 'block'; renderProjectDetail(); }
-        function backToProjectsList() { currentProjectId = null; document.getElementById('project-detail-container').style.display = 'none'; document.getElementById('projects-list-container').style.display = 'block'; renderProjectsList(); }
-
-        function renderProjectDetail() {
-            const p = projects.find(item => item.id === currentProjectId);
-            if (!p) return;
-            document.getElementById('detail-proj-title').textContent = p.title;
-            document.getElementById('detail-proj-desc').textContent = p.desc || '';
-            const total = p.tasks.length, done = p.tasks.filter(t => t.done).length;
-            const pct = total === 0 ? 0 : Math.round((done / total) * 100);
-            document.getElementById('detail-proj-pct').textContent = `${pct}%`;
-            document.getElementById('detail-proj-bar').style.width = `${pct}%`;
-
-            const tContainer = document.getElementById('detail-tasks-list');
-            tContainer.innerHTML = p.tasks.length === 0 ? '<div style="color:var(--text-muted); font-size:0.85rem;">No tasks.</div>' : '';
-            p.tasks.forEach((t, idx) => {
-                tContainer.innerHTML += `<div class="task-item"><div class="task-left"><div class="checkbox-task ${t.done?'checked':''}" onclick="toggleTask(${idx})"></div><span style="${t.done?'text-decoration:line-through;opacity:0.6;':''}">${t.text}</span></div><span onclick="deleteTask(${idx})" style="color:red; cursor:pointer;">✕</span></div>`;
-            });
-
-            const pContainer = document.getElementById('detail-photo-gallery');
-            pContainer.innerHTML = '';
-            p.photos.forEach((url, idx) => {
-                pContainer.innerHTML += `<img class="photo-thumb" src="${url}" onclick="if(confirm('Delete photo?')){projects.find(i=>i.id===currentProjectId).photos.splice(${idx},1); renderProjectDetail();}">`;
-            });
-            localStorage.setItem('dash_projects', JSON.stringify(projects));
-        }
-
-        async function addTask() {
-            const input = document.getElementById('new-task-input');
-            if (!input.value.trim()) return;
-            const p = projects.find(i => i.id === currentProjectId);
-            p.tasks.push({ text: input.value.trim(), done: false });
-            input.value = '';
-            renderProjectDetail();
-            if (currentUser) await _supabase.from('projects').update({ tasks: p.tasks }).eq('id', p.id);
-        }
-
-        async function toggleTask(idx) {
-            const p = projects.find(i => i.id === currentProjectId);
-            p.tasks[idx].done = !p.tasks[idx].done;
-            renderProjectDetail();
-            if (currentUser) await _supabase.from('projects').update({ tasks: p.tasks }).eq('id', p.id);
-        }
-
-        async function deleteTask(idx) {
-            const p = projects.find(i => i.id === currentProjectId);
-            p.tasks.splice(idx, 1);
-            renderProjectDetail();
-            if (currentUser) await _supabase.from('projects').update({ tasks: p.tasks }).eq('id', p.id);
-        }
-
-        async function handlePhotoUpload(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async function(evt) {
-                const p = projects.find(i => i.id === currentProjectId);
-                p.photos.push(evt.target.result);
-                renderProjectDetail();
-                if (currentUser) await _supabase.from('projects').update({ photos: p.photos }).eq('id', p.id);
-            };
-            reader.readAsDataURL(file);
-        }
-
-        async function deleteCurrentProject() {
-            if (confirm('Delete project?')) {
-                projects = projects.filter(i => i.id !== currentProjectId);
-                if (currentUser) await _supabase.from('projects').delete().eq('id', currentProjectId);
-                backToProjectsList();
-            }
-        }
-
-        // --- GYM ROUTINES & STATS ---
-        let gymRoutines = JSON.parse(localStorage.getItem('dash_gym_routines')) || [{id:1, title:'Push Day', desc:'Chest & Triceps', exercises:[{name:'Bench Press', sets:'4', reps:'8', weight:'80kg'}]}];
-        let gymHistory = JSON.parse(localStorage.getItem('dash_gym_history')) || [];
-        let currentGymId = null, activeWorkoutSession = null;
-
-        function renderGymList() {
-            const container = document.getElementById('gym-cards-list');
-            container.innerHTML = gymRoutines.length === 0 ? '<div style="color:var(--text-muted); text-align:center;">No routines.</div>' : '';
-            gymRoutines.forEach(r => {
-                container.innerHTML += `
-                    <div class="gym-card">
-                        <div class="gym-header-row"><span class="gym-title">${r.title}</span><span style="font-size:0.75rem; color:var(--accent);">${r.exercises.length} Exercises</span></div>
-                        <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;">${r.desc || ''}</div>
-                        <div style="display:flex; gap:6px;"><button class="tool-btn active-accent" style="flex:1; padding:6px;" onclick="openGymDetail(${r.id})">Edit</button><button class="action-btn" style="flex:1; padding:6px; font-size:0.75rem;" onclick="startQuickWorkout(${r.id})">⚡ Start</button></div>
-                    </div>`;
-            });
-            localStorage.setItem('dash_gym_routines', JSON.stringify(gymRoutines));
-        }
-
-        async function addGymRoutine() {
-            const title = document.getElementById('new-gym-title').value.trim();
-            if (!title) return;
-            const newR = { id: Date.now(), title, desc: document.getElementById('new-gym-desc').value.trim(), exercises: [] };
-            gymRoutines.push(newR);
-            document.getElementById('new-gym-title').value = '';
-            document.getElementById('new-gym-desc').value = '';
-            renderGymList();
-            if (currentUser) await _supabase.from('gym_routines').insert({ id: newR.id, user_id: currentUser.id, title: newR.title, desc: newR.desc, exercises: [] });
-        }
-
-        function openGymDetail(id) { currentGymId = id; document.getElementById('gym-list-container').style.display = 'none'; document.getElementById('gym-detail-container').style.display = 'block'; renderGymDetail(); }
-        function backToGymList() { currentGymId = null; document.getElementById('gym-detail-container').style.display = 'none'; document.getElementById('gym-list-container').style.display = 'block'; renderGymList(); }
-
-        function renderGymDetail() {
-            const r = gymRoutines.find(i => i.id === currentGymId);
-            if (!r) return;
-            document.getElementById('detail-gym-title').textContent = r.title;
-            document.getElementById('detail-gym-desc').textContent = r.desc || '';
-            const container = document.getElementById('detail-exercises-list');
-            container.innerHTML = r.exercises.length === 0 ? '<div style="color:var(--text-muted); font-size:0.85rem;">No exercises.</div>' : '';
-            r.exercises.forEach((ex, idx) => {
-                container.innerHTML += `<div class="exercise-item"><div><div style="font-weight:700;">${ex.name}</div><div style="font-size:0.75rem; color:var(--text-muted);">${ex.sets} Sets × ${ex.reps} Reps (${ex.weight})</div></div><span onclick="deleteExerciseTemplate(${idx})" style="color:red; cursor:pointer;">✕</span></div>`;
-            });
-        }
-
-        async function addExerciseTemplate() {
-            const name = document.getElementById('new-ex-name').value.trim();
-            if (!name) return;
-            const r = gymRoutines.find(i => i.id === currentGymId);
-            r.exercises.push({ name, sets: document.getElementById('new-ex-sets').value.trim()||'3', reps: document.getElementById('new-ex-reps').value.trim()||'10', weight: document.getElementById('new-ex-weight').value.trim()||'0kg' });
-            document.getElementById('new-ex-name').value = '';
-            renderGymDetail();
-            if (currentUser) await _supabase.from('gym_routines').update({ exercises: r.exercises }).eq('id', r.id);
-        }
-
-        async function deleteExerciseTemplate(idx) {
-            const r = gymRoutines.find(i => i.id === currentGymId);
-            r.exercises.splice(idx, 1);
-            renderGymDetail();
-            if (currentUser) await _supabase.from('gym_routines').update({ exercises: r.exercises }).eq('id', r.id);
-        }
-
-        function startQuickWorkout(id) { currentGymId = id; startActiveWorkout(); }
-        function startActiveWorkout() {
-            const r = gymRoutines.find(i => i.id === currentGymId);
-            if (!r || r.exercises.length === 0) { alert('Add exercises first.'); return; }
-            activeWorkoutSession = { routineTitle: r.title, date: new Date().toLocaleDateString(), exercises: r.exercises.map(e => ({...e, actualWeight: e.weight, actualReps: e.reps})) };
-            document.getElementById('active-workout-title').textContent = `Live: ${r.title}`;
-            const container = document.getElementById('active-exercises-container');
-            container.innerHTML = '';
-            activeWorkoutSession.exercises.forEach((ex, idx) => {
-                container.innerHTML += `<div style="background:var(--bg-color); border:1px solid var(--border-color); padding:8px; margin-bottom:8px; border-radius:6px;"><div style="font-weight:700; color:var(--accent);">${ex.name}</div><div style="display:flex; gap:8px; margin-top:4px;"><input type="text" id="act-wt-${idx}" value="${ex.actualWeight}"><input type="text" id="act-reps-${idx}" value="${ex.actualReps}"></div></div>`;
-            });
-            switchView('gym-active-view');
-        }
-
-        async function finishActiveWorkout() {
-            activeWorkoutSession.exercises.forEach((ex, idx) => {
-                ex.actualWeight = document.getElementById(`act-wt-${idx}`).value;
-                ex.actualReps = document.getElementById(`act-reps-${idx}`).value;
-            });
-            gymHistory.unshift(activeWorkoutSession);
-            localStorage.setItem('dash_gym_history', JSON.stringify(gymHistory));
-            if (currentUser) await _supabase.from('gym_history').insert({ user_id: currentUser.id, routine_title: activeWorkoutSession.routineTitle, date: activeWorkoutSession.date, exercises_json: activeWorkoutSession.exercises });
-            activeWorkoutSession = null;
-            switchView('gym-view');
-            backToGymList();
-        }
-        function cancelActiveWorkout() { activeWorkoutSession = null; switchView('gym-view'); }
-
-        function renderGymStats() {
-            const container = document.getElementById('gym-history-container');
-            container.innerHTML = gymHistory.length === 0 ? '<div style="color:var(--text-muted); text-align:center;">No completed workouts.</div>' : '';
-            gymHistory.forEach(s => {
-                let exHtml = '';
-                s.exercises.forEach(e => exHtml += `<div style="font-size:0.8rem; display:flex; justify-content:between;"><span>${e.name}</span><span style="color:var(--accent);">${e.actualWeight} × ${e.actualReps}</span></div>`);
-                container.innerHTML += `<div style="background:var(--bg-color); border:1px solid var(--border-color); padding:8px; margin-bottom:8px; border-radius:6px;"><div style="font-weight:700; color:var(--accent);">${s.routineTitle} <span style="font-size:0.75rem; color:var(--text-muted); float:right;">${s.date}</span></div>${exHtml}</div>`;
-            });
-        }
-
-        // --- CALORIES ---
-        let calorieTarget = parseInt(localStorage.getItem('dash_cal_target')) || 3300;
-        let calorieLogs = JSON.parse(localStorage.getItem('dash_cal_logs')) || {};
-
-        function renderCalories() {
-            const todayKey = new Date().toISOString().slice(0, 10);
-            const meals = calorieLogs[todayKey] || [];
-            document.getElementById('calorie-target-display').textContent = `${calorieTarget} kcal`;
-            let consumed = meals.reduce((sum, m) => sum + m.cals, 0);
-            document.getElementById('calories-consumed').textContent = consumed;
-            document.getElementById('calories-remaining').textContent = Math.max(0, calorieTarget - consumed);
-            document.getElementById('calorie-progress-bar').style.width = `${Math.min(100, Math.round((consumed/calorieTarget)*100))}%`;
-
-            const container = document.getElementById('meals-list-container');
-            container.innerHTML = meals.length === 0 ? '<div style="color:var(--text-muted); font-size:0.85rem;">No meals logged.</div>' : '';
-            meals.forEach((m, idx) => {
-                container.innerHTML += `<div class="meal-item"><div><div style="font-weight:600;">${m.name}</div><div style="font-size:0.75rem; color:var(--accent);">${m.cals} kcal</div></div><span onclick="deleteMeal('${todayKey}', ${idx})" style="color:red; cursor:pointer;">✕</span></div>`;
-            });
-            localStorage.setItem('dash_cal_logs', JSON.stringify(calorieLogs));
-        }
-
-        async function addMeal() {
-            const name = document.getElementById('new-meal-name').value.trim();
-            const cals = parseInt(document.getElementById('new-meal-cals').value.trim());
-            if (!name || isNaN(cals)) return;
-            const todayKey = new Date().toISOString().slice(0, 10);
-            if (!calorieLogs[todayKey]) calorieLogs[todayKey] = [];
-            calorieLogs[todayKey].push({ name, cals });
-            document.getElementById('new-meal-name').value = '';
-            document.getElementById('new-meal-cals').value = '';
-            renderCalories();
-            if (currentUser) await _supabase.from('calories').upsert({ user_id: currentUser.id, date: todayKey, meals_json: calorieLogs[todayKey] }, { onConflict: 'user_id,date' });
-        }
-
-        async function deleteMeal(dateKey, idx) {
-            calorieLogs[dateKey].splice(idx, 1);
-            renderCalories();
-            if (currentUser) await _supabase.from('calories').upsert({ user_id: currentUser.id, date: dateKey, meals_json: calorieLogs[dateKey] }, { onConflict: 'user_id,date' });
-        }
-
-        function editCalorieTarget() {
-            const t = prompt('Daily target (kcal):', calorieTarget);
-            if (t && !isNaN(t)) { calorieTarget = parseInt(t); renderCalories(); localStorage.setItem('dash_cal_target', calorieTarget); }
-        }
-
-        // --- BOOKS ---
-        let books = JSON.parse(localStorage.getItem('dash_books')) || [{id:1, title:'Atomic Habits', author:'James Clear', current:50, total:300}];
-
-        function renderBooks() {
-            const container = document.getElementById('books-list-container');
-            container.innerHTML = books.length === 0 ? '<div style="color:var(--text-muted); font-size:0.85rem;">No books.</div>' : '';
-            books.forEach((b, idx) => {
-                const pct = Math.min(100, Math.round((b.current / b.total) * 100));
-                container.innerHTML += `
-                    <div class="book-card">
-                        <div class="book-header-row"><div><div class="book-title">${b.title}</div><div style="font-size:0.75rem; color:var(--text-muted);">${b.author||''}</div></div><span class="book-pct">${pct}%</span></div>
-                        <div style="font-size:0.8rem; color:var(--text-muted); display:flex; justify-content:space-between; margin:4px 0;"><span>Page ${b.current} of ${b.total}</span><span onclick="deleteBook(${idx})" style="color:red; cursor:pointer;">Delete</span></div>
-                        <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%;"></div></div>
-                        <div style="display:flex; gap:4px;"><button class="tool-btn" style="flex:1;" onclick="updateBook(${idx},-10)">-10</button><button class="tool-btn" style="flex:1;" onclick="updateBook(${idx},-1)">-1</button><button class="tool-btn active-accent" style="flex:1;" onclick="updateBook(${idx},1)">+1</button><button class="tool-btn active-accent" style="flex:1;" onclick="updateBook(${idx},10)">+10</button></div>
-                    </div>`;
-            });
-            localStorage.setItem('dash_books', JSON.stringify(books));
-        }
-
-        async function addBook() {
-            const title = document.getElementById('new-book-title').value.trim();
-            const total = parseInt(document.getElementById('new-book-total').value.trim());
-            if (!title || isNaN(total)) return;
-            const newB = { id: Date.now(), title, author: document.getElementById('new-book-author').value.trim(), current: 0, total };
-            books.push(newB);
-            document.getElementById('new-book-title').value = '';
-            document.getElementById('new-book-author').value = '';
-            document.getElementById('new-book-total').value = '';
-            renderBooks();
-            if (currentUser) await _supabase.from('books').insert({ id: newB.id, user_id: currentUser.id, title: newB.title, author: newB.author, current: 0, total });
-        }
-
-        async function updateBook(idx, delta) {
-            books[idx].current = Math.max(0, Math.min(books[idx].total, books[idx].current + delta));
-            renderBooks();
-            if (currentUser) await _supabase.from('books').update({ current: books[idx].current }).eq('id', books[idx].id);
-        }
-
-        async function deleteBook(idx) {
-            const id = books[idx].id;
-            books.splice(idx, 1);
-            renderBooks();
-            if (currentUser) await _supabase.from('books').delete().eq('id', id);
-        }
-
-        // --- QUICK NOTES ---
-        let notesTimer = null;
-        async function saveScratchpad() {
-            const val = document.getElementById('scratchpad-textarea').value;
-            localStorage.setItem('dash_quick_notes', val);
-            clearTimeout(notesTimer);
-            if (currentUser) {
-                notesTimer = setTimeout(async () => {
-                    await _supabase.from('quick_notes').upsert({ user_id: currentUser.id, content: val }, { onConflict: 'user_id' });
-                }, 1000);
-            }
-        }
-
-        // --- POMODORO TIMER ---
-        let timerSeconds = 25 * 60, timerInterval = null, isRunning = false;
-        function toggleTimer() {
-            const btn = document.getElementById('timer-start-btn');
-            if (!isRunning) {
-                isRunning = true; btn.textContent = 'Pause';
-                timerInterval = setInterval(() => {
-                    if (timerSeconds > 0) { timerSeconds--; updateTimerDisplay(); }
-                    else { clearInterval(timerInterval); isRunning = false; btn.textContent = 'Start'; alert('Focus session complete!'); }
-                }, 1000);
-            } else { isRunning = false; clearInterval(timerInterval); btn.textContent = 'Start'; }
-        }
-        function resetTimer() { clearInterval(timerInterval); isRunning = false; timerSeconds = 25 * 60; document.getElementById('timer-start-btn').textContent = 'Start'; updateTimerDisplay(); }
-        function updateTimerDisplay() {
-            document.getElementById('timer-clock').textContent = `${String(Math.floor(timerSeconds/60)).padStart(2,'0')}:${String(timerSeconds%60).padStart(2,'0')}`;
-        }
-
-        // --- BACKUP & SETTINGS ---
-        function exportData() {
-            const backup = { habits, habitLogs, calendarEvents, projects, gymRoutines, gymHistory, calorieTarget, calorieLogs, books, scratchpad: localStorage.getItem('dash_quick_notes') };
-            const anchor = Object.assign(document.createElement('a'), { href: "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup, null, 2)), download: `dashboard_backup.json` });
-            document.body.appendChild(anchor); anchor.click(); anchor.remove();
-        }
-
-        function importData(e) {
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                try {
-                    const data = JSON.parse(evt.target.result);
-                    if(data.habits) localStorage.setItem('dash_matrix_habits', JSON.stringify(data.habits));
-                    if(data.habitLogs) localStorage.setItem('dash_matrix_logs', JSON.stringify(data.habitLogs));
-                    if(data.projects) localStorage.setItem('dash_projects', JSON.stringify(data.projects));
-                    alert('Import successful! Refreshing.'); location.reload();
-                } catch(err) { alert('Invalid JSON.'); }
-            };
-            reader.readAsText(e.target.files[0]);
-        }
-
-        function resetAllData() {
-            if (confirm('Wipe all data?')) { localStorage.clear(); location.reload(); }
-        }
-
-        applySavedTheme();
-        initAuth();
-    </script>
+      } else {
+        await upload(local); // first time for this account: push what is on this device
+        cc.setStatus('Synced ' + hhmm());
+      }
+    } catch (e) {
+      cc.setStatus(niceError(e));
+    }
+    busy = false;
+  }
+
+  function setSession(s) {
+    var had = session && session.user.id;
+    session = s;
+    if (!cc) return;
+    if (s && had !== s.user.id) pull().then(function () { cc.refresh(); });
+    else { if (!s) cc.setStatus('Signed out. Saved on this device only.'); cc.refresh(); }
+  }
+
+  window.CCData = {
+    load: readCache,
+
+    save: async function (state) {
+      writeCache(state);
+      if (!sb || !session) return 'Saved on this device';
+      try { await upload(state); } catch (e) { lsSet(LS_DIRTY, '1'); throw e; }
+      return 'Synced ' + hhmm();
+    },
+
+    pull: pull,
+
+    start: function (api) {
+      cc = api;
+      if (!configured) { cc.setStatus('Cloud sync is off'); return; }
+      if (!sb) { cc.setStatus('Could not load the Supabase library. Check your connection.'); return; }
+      cc.setStatus('Signed out');
+      sb.auth.getSession().then(function (r) { setSession(r.data.session); });
+      // Never await other Supabase calls inside this callback.
+      sb.auth.onAuthStateChange(function (_e, s) { setTimeout(function () { setSession(s); }, 0); });
+      function wake() { if (!document.hidden && session) { if (lsGet(LS_DIRTY)) { var l = cc.getState(); upload(l).then(function () { cc.setStatus('Synced ' + hhmm()); }, function () {}); } pull(); } }
+      document.addEventListener('visibilitychange', wake);
+      window.addEventListener('online', wake);
+    },
+
+    needsSetup: function () { return !configured; },
+    saveConfig: function (u, k) { lsSet(LS_CFG, JSON.stringify({ url: u, key: k })); },
+    clearConfig: fromFile ? undefined : function () { lsDel(LS_CFG); lsDel(LS_LAST); lsDel(LS_DIRTY); },
+
+    auth: sb ? {
+      user: function () { return session ? session.user : null; },
+      signIn: async function (email, password) {
+        var r = await sb.auth.signInWithPassword({ email: email, password: password });
+        if (r.error) throw r.error;
+      },
+      signUp: async function (email, password) {
+        var r = await sb.auth.signUp({ email: email, password: password });
+        if (r.error) throw r.error;
+        return { confirmEmail: !r.data.session };
+      },
+      signOut: async function () { var r = await sb.auth.signOut(); if (r && r.error) throw r.error; }
+    } : undefined
+  };
+})();
+</script>
+<script>
+/* Command Centre UI. Renders from one state object and never touches a backend directly. */
+(function(){
+'use strict';
+if(!window.CCData){document.getElementById('app').innerHTML='<p style="padding:24px">No data adapter found. Load data-local.js (or your own adapter that defines window.CCData) before ui.js.</p>';return}
+var D=window.CCData;
+var $=function(s,r){return (r||document).querySelector(s)};
+var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+var uid=function(){return Math.random().toString(36).slice(2,9)};
+var pad=function(n){return String(n).padStart(2,'0')};
+var iso=function(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
+var parse=function(s){var p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2])};
+var addDays=function(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x};
+var mondayOf=function(d){var x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-((x.getDay()+6)%7));return x};
+var DOW=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+var MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+var num=function(v){var n=parseFloat(v);return isFinite(n)?n:0};
+var fmtN=function(n){return Math.round(n).toLocaleString('en-GB')};
+
+var ICONS={
+ home:'<path d="M3 11l9-8 9 8M5 10v10h14V10"/>',
+ habits:'<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>',
+ calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+ projects:'<path d="M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5"/>',
+ 'gym-plan':'<path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/>',
+ 'gym-stats':'<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>',
+ calories:'<path d="M12 3c3 4 6 6 6 10a6 6 0 0 1-12 0c0-2 1-3 2-4 .5 2 1.5 2.5 2.5 2.5C10 9 10.5 6 12 3z"/>',
+ books:'<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5zM4 19a2 2 0 0 0 2 2h13"/>',
+ notes:'<path d="M5 3h10l4 4v14H5zM14 3v5h5M8 13h8M8 17h6"/>',
+ focus:'<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/>',
+ prefs:'<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>'
+};
+var ic=function(n){return '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">'+ICONS[n]+'</svg>'};
+var MODS=[['home','Home'],['habits','Habits'],['calendar','Calendar'],['projects','Projects'],['gym-plan','Gym Plan'],['gym-stats','Gym Stats'],['calories','Calories'],['books','Books'],['notes','Notes'],['focus','Focus'],['prefs','Settings']];
+
+var QUOTES=['Do the next small thing well.','Consistency beats intensity.','Protect the first hour.','One clear priority is enough.','Make it easy to start.','Finish what is already open.','Sleep is training too.','Show up, then adjust.','Slow is smooth, smooth is fast.','Write it down, then let it go.','Progress is quiet and cumulative.','Remove one obstacle today.','Ship the draft.','Rest is part of the plan.'];
+var EXS=['Barbell Bench Press','Incline Dumbbell Press','Barbell Back Squat','Conventional Deadlift','Overhead Press','Lat Pulldown','Machine Barbell Row','Dumbbell Bicep Curl','Tricep Cable Pushdown','Leg Press','Romanian Deadlift','Pull-up','Lateral Raise','Walking Lunge'];
+var HUES={Indigo:235,Teal:178,Amber:40,Rose:345,Green:140,Violet:280};
+
+/* ---------- state ---------- */
+function defaults(){
+  var r={};for(var i=0;i<7;i++)r[i]={name:'',ex:[]};
+  return {v:2,updated:0,theme:'system',hue:235,
+    habits:[{id:uid(),name:'Drink 3L water',days:{}},{id:uid(),name:'Read 20 minutes',days:{}},{id:uid(),name:'Train or walk',days:{}},{id:uid(),name:'In bed before 23:00',days:{}}],
+    events:[],projects:[],routines:r,workouts:[],live:null,
+    goal:3300,meals:{},books:[],notes:[],
+    focusCfg:{focus:25,short:5,long:15},sessions:{},todayFocus:{}};
+}
+var S=defaults();
+function normalise(o){var d=defaults();for(var k in d){if(o[k]===undefined)o[k]=d[k]}for(var i=0;i<7;i++){if(!o.routines[i])o.routines[i]={name:'',ex:[]}}return o}
+var ui={view:'home',weekOff:0,cal:{y:new Date().getFullYear(),m:new Date().getMonth()},sel:iso(new Date()),proj:null,planDay:(new Date().getDay()+6)%7,calDate:iso(new Date()),editNote:null,noteQ:'',editH:false,confirm:null,sync:'Local only',importOpen:false,exportText:'',
+  t:{mode:'focus',remaining:25*60,end:0,running:false}};
+/* ===== DATA ADAPTER BOUNDARY =====
+   The UI never talks to a backend. It only calls window.CCData (see README.md):
+     D.load()          -> state object or null (may be async)
+     D.save(state)     -> persist; may return a status string (may be async)
+     D.auth (optional) -> { user(), signIn(e,p), signUp(e,p), signOut() }
+     D.pull (optional) -> re-fetch from the backend
+     D.start(api)      (optional) -> called once after first render, api = window.CC
+*/
+var saveTimer=null,flushing=false,again=false;
+function save(){S.updated=Date.now();clearTimeout(saveTimer);saveTimer=setTimeout(flush,700)}
+async function flush(){
+  if(flushing){again=true;return}
+  flushing=true;ui.sync='Saving…';paintSync();
+  try{var r=await D.save(S);ui.sync=(typeof r==='string'&&r)||'Saved'}
+  catch(e){ui.sync='Save failed'}
+  flushing=false;paintSync();
+  if(again){again=false;flush()}
+}
+function paintSync(){var e=$('#syncline');if(e)e.textContent=ui.sync}
+function needsSetup(){return !!(D.needsSetup&&D.needsSetup())}
+function authNeeded(){return !!(D.auth&&!D.auth.user())}
+function cfgBtn(){return D.clearConfig?'<button class="btn ghost sm" data-act="clearcfg">'+(ui.confirm==='clearcfg'?'Confirm disconnect':'Disconnect project')+'</button>':''}
+function authPanel(){
+  if(needsSetup())return '<div class="panel"><h3>Cloud sync</h3><p class="muted" style="margin:0 0 12px">Connect your Supabase project to sync across devices. Paste the Project URL and the anon key from Supabase, Project Settings, API. They are stored in this browser only.</p><form data-form="setup" class="form"><input id="su" type="url" placeholder="https://xxxx.supabase.co" required aria-label="Supabase project URL" autocomplete="off"><input id="sk" type="text" placeholder="anon key" required aria-label="Supabase anon key" autocomplete="off" spellcheck="false"><button class="btn" type="submit">Save &amp; connect</button></form><div class="sync" id="syncline" style="margin-top:10px">'+esc(ui.sync)+'</div></div>';
+  var A=D.auth;if(!A)return '<div class="panel"><h3>Cloud sync</h3><p class="muted" style="margin:0 0 8px">'+esc(ui.sync)+'</p>'+cfgBtn()+'</div>';
+  var u=A.user();
+  if(u)return '<div class="panel"><h3>Account</h3><p style="margin:0 0 6px">Signed in as <strong>'+esc(u.email||'your account')+'</strong></p><div class="sync" id="syncline">'+esc(ui.sync)+'</div><div class="row" style="margin-top:12px">'+(D.pull?'<button class="btn ghost sm" data-act="syncnow">Sync now</button>':'')+'<button class="btn ghost sm" data-act="signout">Sign out</button>'+cfgBtn()+'</div></div>';
+  return '<div class="panel"><h3>Sign in</h3><p class="muted" style="margin:0 0 12px">Sign in to sync your dashboard across all your devices.</p><form data-form="auth" class="form"><input id="ae" type="email" autocomplete="email" placeholder="Email" required aria-label="Email"><input id="ap" type="password" autocomplete="current-password" minlength="6" placeholder="Password" required aria-label="Password"><button class="btn" type="submit" data-mode="in">Sign in</button><button class="btn ghost" type="submit" data-mode="up">Sign up</button></form><div class="sync" id="syncline" style="margin-top:10px">'+esc(ui.sync)+'</div><div style="margin-top:10px">'+cfgBtn()+'</div></div>';
+}
+/* Small API handed to the adapter so it can push remote changes into the UI */
+window.CC={
+  getState:function(){return S},
+  replaceState:function(s){S=normalise(s);applyTheme();render()},
+  setStatus:function(t){ui.sync=t;paintSync()},
+  refresh:function(){render()}
+};
+
+/* ---------- helpers ---------- */
+function toast(m){var t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){t.hidden=true},2200)}
+function asked(key){if(ui.confirm===key){ui.confirm=null;return true}ui.confirm=key;render();return false}
+function delBtn(kind,id,extra){var k=kind+':'+id+(extra||'');var on=ui.confirm===k;return '<button class="btn sm '+(on?'danger':'ghost')+'" data-act="del" data-kind="'+kind+'" data-id="'+esc(id)+'" data-x="'+esc(extra||'')+'">'+(on?'Confirm delete':'Delete')+'</button>'}
+function head(t,sub,right){return '<div class="head"><div><h2>'+t+'</h2>'+(sub?'<p>'+sub+'</p>':'')+'</div>'+(right?'<div class="row">'+right+'</div>':'')+'</div>'}
+function bar(p,over){return '<div class="bar'+(over?' over':'')+'"><i style="width:'+Math.max(0,Math.min(100,p))+'%"></i></div>'}
+var today=function(){return iso(new Date())};
+
+function habitStreak(h){var d=new Date();if(!h.days[iso(d)])d=addDays(d,-1);var n=0;while(h.days[iso(d)]){n++;d=addDays(d,-1)}return n}
+function mealsOn(d){return S.meals[d]||[]}
+function kcalOn(d){return mealsOn(d).reduce(function(a,m){return a+m.kcal},0)}
+function e1rm(w,r){return r<=1?w:w*(1+r/30)}
+function bestSet(sets){var b=null;sets.forEach(function(s){if(!b||e1rm(s.w,s.r)>e1rm(b.w,b.r))b=s});return b}
+function lastPerf(name){for(var i=S.workouts.length-1;i>=0;i--){var e=S.workouts[i].entries.filter(function(x){return x.name===name})[0];if(e&&e.sets.length){var b=bestSet(e.sets);return b.w+' kg × '+b.r}}return null}
+function projPct(p){return p.tasks.length?Math.round(p.tasks.filter(function(t){return t.done}).length/p.tasks.length*100):0}
+
+/* ---------- views ---------- */
+var V={};
+V.home=function(){
+  var n=new Date(),h=n.getHours();
+  var greet=h<5?'Late night':h<12?'Good morning':h<18?'Good afternoon':'Good evening';
+  var td=today(),doy=Math.floor((n-new Date(n.getFullYear(),0,0))/864e5);
+  var hd=S.habits.filter(function(x){return x.days[td]}).length,ht=S.habits.length;
+  var kc=kcalOn(td),rem=S.goal-kc;
+  var ev=S.events.filter(function(e){return e.date>=td}).sort(function(a,b){return (a.date+a.time).localeCompare(b.date+b.time)})[0];
+  var act=S.projects.filter(function(p){return p.tasks.length===0||projPct(p)<100});
+  var avg=S.projects.length?Math.round(S.projects.reduce(function(a,p){return a+projPct(p)},0)/S.projects.length):0;
+  var rt=S.routines[(n.getDay()+6)%7];
+  var ws=mondayOf(n),wk=S.workouts.filter(function(w){return w.date>=iso(ws)}).length;
+  var reading=S.books.filter(function(b){return b.cur<b.pages}).length;
+  var ses=S.sessions[td]||0;
+  var tile=function(v,ico,lab,big,sub,extra){return '<button class="tile" data-act="nav" data-v="'+v+'"><span class="lab">'+ic(ico)+lab+'</span><span class="big">'+big+'</span><span class="sub">'+sub+'</span>'+(extra||'')+'</button>'};
+  return '<div class="head"><div><h2>'+greet+'</h2><p>'+n.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'</p></div></div>'+
+  (needsSetup()?'<div class="panel"><div class="row" style="justify-content:space-between"><span class="muted">Cloud sync is off. Connect Supabase to sync devices.</span><button class="btn ghost sm" data-act="nav" data-v="prefs">Set up</button></div></div>':authNeeded()?authPanel():'')+'<div class="panel focusline"><span class="lab2">Today’s focus</span><form data-form="focus" class="form"><input id="fi" type="text" maxlength="120" value="'+esc(S.todayFocus[td]||'')+'" placeholder="What is the one thing today?" aria-label="Today’s focus"><button class="btn" type="submit">Set</button></form><span class="q">'+QUOTES[doy%QUOTES.length]+'</span></div>'+
+  '<div class="grid">'+
+   tile('habits','habits','Habits today',hd+'/'+ht,ht?(hd===ht?'All done. Nice.':(ht-hd)+' to go'):'No habits yet',bar(ht?hd/ht*100:0))+
+   tile('calories','calories','Calories left',fmtN(Math.max(rem,0)),fmtN(kc)+' of '+fmtN(S.goal)+' kcal eaten',bar(kc/S.goal*100,kc>S.goal))+
+   tile('calendar','calendar','Next event',ev?esc(ev.time||'All day'):'None',ev?esc(ev.title)+' · '+parse(ev.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'Nothing scheduled')+
+   tile('projects','projects','Projects',act.length,S.projects.length?avg+'% average completion':'Create your first project',bar(avg))+
+   tile('gym-plan','gym-plan','Training',rt.name?esc(rt.name):'Rest',(rt.ex.length?rt.ex.length+' exercises planned':'No routine set')+' · '+wk+' session'+(wk===1?'':'s')+' this week')+
+   tile('focus','focus','Focus sessions',ses,ses===1?'completed today':'completed today')+
+   tile('books','books','Reading',reading,reading?'book'+(reading===1?'':'s')+' in progress':'Add a book')+
+   tile('notes','notes','Notes',S.notes.length,S.notes.filter(function(x){return x.pin}).length+' pinned')+
+  '</div>';
+};
+
+V.habits=function(){
+  var ws=addDays(mondayOf(new Date()),ui.weekOff*7),td=today();
+  var days=[];for(var i=0;i<7;i++)days.push(addDays(ws,i));
+  var label=days[0].toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' – '+days[6].toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  var tot=0,dn=0;
+  var rows=S.habits.map(function(h){
+    var c=0;
+    var cells=days.map(function(d){var k=iso(d),on=!!h.days[k],fut=k>td;if(on)c++;if(k<=td){tot++;if(on)dn++}
+      return '<td><button class="dot'+(on?' on':'')+(fut?' future':'')+'" data-act="hab" data-id="'+h.id+'" data-d="'+k+'" aria-pressed="'+on+'" aria-label="'+esc(h.name)+' '+k+'">'+(on?'<svg class="ico" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" style="stroke-width:3"/></svg>':'')+'</button></td>'}).join('');
+    return '<tr><td>'+(ui.editH?'<div class="row"><input type="text" value="'+esc(h.name)+'" data-chg="hname" data-id="'+h.id+'" aria-label="Habit name">'+delBtn('habit',h.id)+'</div>':esc(h.name))+'</td>'+cells+'<td class="streak"><b>'+habitStreak(h)+'</b> day streak<br>'+c+'/7 this week</td></tr>';
+  }).join('');
+  return head('Habits &amp; streaks',label+(tot?' · '+Math.round(dn/tot*100)+'% complete so far':''),
+    '<button class="btn ghost sm" data-act="week" data-d="-1">‹ Prev</button><button class="btn ghost sm" data-act="week" data-d="0">This week</button><button class="btn ghost sm" data-act="week" data-d="1">Next ›</button><button class="btn sm'+(ui.editH?'':' ghost')+'" data-act="editH">'+(ui.editH?'Done':'Edit habits')+'</button>')+
+  '<div class="panel scroll">'+(S.habits.length?'<table class="hab"><thead><tr><th>Habit</th>'+days.map(function(d){return '<th class="'+(iso(d)===td?'today':'')+'">'+DOW[(d.getDay()+6)%7]+'<br>'+d.getDate()+'</th>'}).join('')+'<th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="empty">No habits yet. Add one below.</div>')+'</div>'+
+  '<div class="panel"><h3>Add a habit</h3><form data-form="habit" class="form"><input id="hn" type="text" maxlength="60" placeholder="e.g. Stretch for 10 minutes" required aria-label="New habit"><button class="btn" type="submit">Add</button></form></div>';
+};
+
+V.calendar=function(){
+  var y=ui.cal.y,m=ui.cal.m,first=new Date(y,m,1),lead=(first.getDay()+6)%7,dim=new Date(y,m+1,0).getDate(),td=today();
+  var cells='';DOW.forEach(function(d){cells+='<div class="dow">'+d+'</div>'});
+  var start=addDays(first,-lead),total=Math.ceil((lead+dim)/7)*7;
+  for(var i=0;i<total;i++){var d=addDays(start,i),k=iso(d),n=S.events.filter(function(e){return e.date===k}).length,hasW=S.workouts.some(function(w){return w.date===k});
+    cells+='<button class="'+(d.getMonth()!==m?'out ':'')+(k===td?'today ':'')+(k===ui.sel?'sel':'')+'" data-act="selday" data-d="'+k+'" aria-label="'+k+(n?', '+n+' events':'')+'"><span>'+d.getDate()+'</span><span class="pips">'+(n?'<i></i>':'')+(n>1?'<i></i>':'')+(hasW?'<i style="border-radius:1px"></i>':'')+'</span></button>'}
+  var evs=S.events.filter(function(e){return e.date===ui.sel}).sort(function(a,b){return (a.time||'').localeCompare(b.time||'')});
+  return head('Calendar &amp; events',MONTHS[m]+' '+y,'<button class="btn ghost sm" data-act="cal" data-d="-1">‹</button><button class="btn ghost sm" data-act="cal" data-d="0">Today</button><button class="btn ghost sm" data-act="cal" data-d="1">›</button>')+
+  '<div class="split"><div class="panel"><div class="cal">'+cells+'</div><p class="muted" style="margin:10px 0 0;font-size:12px">Round dot: event. Square dot: workout logged.</p></div>'+
+  '<div class="panel"><h3>'+parse(ui.sel).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})+'</h3>'+
+  (evs.length?'<ul class="list">'+evs.map(function(e){return '<li><span class="mono muted">'+esc(e.time||'--:--')+'</span><span class="grow">'+esc(e.title)+'</span>'+delBtn('event',e.id)+'</li>'}).join('')+'</ul>':'<div class="empty">No events on this day.</div>')+
+  '<form data-form="event" class="form" style="margin-top:14px"><input id="et" type="time" aria-label="Time"><input id="ex" type="text" maxlength="80" placeholder="Event title" required aria-label="Event title"><button class="btn" type="submit">Add</button></form></div></div>';
+};
+
+V.projects=function(){
+  var p=S.projects.filter(function(x){return x.id===ui.proj})[0];
+  if(p){
+    return head(esc(p.name),projPct(p)+'% complete · '+p.tasks.filter(function(t){return t.done}).length+' of '+p.tasks.length+' tasks','<button class="btn ghost sm" data-act="projback">‹ All projects</button>'+delBtn('project',p.id))+
+    '<div class="panel">'+bar(projPct(p))+'<div style="height:12px"></div>'+
+    (p.tasks.length?'<ul class="list">'+p.tasks.map(function(t){return '<li><input type="checkbox" data-chg="task" data-id="'+t.id+'" '+(t.done?'checked':'')+' aria-label="Done"><span class="grow'+(t.done?' done':'')+'">'+esc(t.text)+'</span>'+delBtn('task',t.id)+'</li>'}).join('')+'</ul>':'<div class="empty">No tasks yet.</div>')+
+    '<form data-form="task" class="form" style="margin-top:14px"><input id="tn" type="text" maxlength="120" placeholder="Add a task" required aria-label="New task"><button class="btn" type="submit">Add</button></form></div>';
+  }
+  return head('Active projects',S.projects.length+' project'+(S.projects.length===1?'':'s'))+
+  (S.projects.length?'<div class="grid">'+S.projects.map(function(p){return '<button class="tile" data-act="openproj" data-id="'+p.id+'"><span class="lab">'+p.tasks.length+' tasks</span><span class="big" style="font-size:26px;overflow-wrap:anywhere">'+esc(p.name)+'</span><span class="sub">'+projPct(p)+'% complete</span>'+bar(projPct(p))+'</button>'}).join('')+'</div>':'<div class="empty">No projects yet.</div>')+
+  '<div class="panel"><h3>New project</h3><form data-form="project" class="form"><input id="pn" type="text" maxlength="80" placeholder="Project name" required aria-label="Project name"><button class="btn" type="submit">Add project</button></form></div>';
+};
+
+V['gym-plan']=function(){
+  var rd=S.routines[ui.planDay];
+  var tabs='<div class="days">'+DOW.map(function(d,i){return '<button data-act="plan" data-d="'+i+'" aria-pressed="'+(i===ui.planDay)+'"><div class="d">'+d+'</div><div class="n">'+(S.routines[i].name?esc(S.routines[i].name):'<span class="muted">Rest</span>')+'</div></button>'}).join('')+'</div>';
+  var live='';
+  if(S.live){
+    live='<div class="panel live"><div class="row" style="justify-content:space-between"><div><span class="pill">Session in progress</span><h3 style="margin-top:8px">'+esc(S.live.name||'Workout')+'</h3></div><div class="row"><button class="btn" data-act="finish">Finish &amp; save</button>'+'<button class="btn '+(ui.confirm==='live'?'danger':'ghost')+'" data-act="cancellive">'+(ui.confirm==='live'?'Discard session?':'Cancel')+'</button></div></div>'+
+    '<p class="muted" style="margin:6px 0 0">Log what you lifted. The hint shows your last best set, so you can beat it.</p>'+
+    S.live.entries.map(function(e,ei){var lp=lastPerf(e.name);
+      return '<div style="margin-top:16px"><div class="row" style="justify-content:space-between"><strong>'+esc(e.name)+'</strong><span class="hint">'+(lp?'Last best: '+lp:'First time')+'</span></div>'+
+      e.sets.map(function(s,si){return '<div class="setrow"><span class="mono muted">'+(si+1)+'</span><input type="number" inputmode="decimal" step="0.5" min="0" placeholder="kg" value="'+(s.w===''?'':s.w)+'" data-chg="lw" data-ei="'+ei+'" data-si="'+si+'" aria-label="Weight, set '+(si+1)+'"><input type="number" inputmode="numeric" min="0" placeholder="reps" value="'+(s.r===''?'':s.r)+'" data-chg="lr" data-ei="'+ei+'" data-si="'+si+'" aria-label="Reps, set '+(si+1)+'"><input type="checkbox" '+(s.done?'checked':'')+' data-chg="ld" data-ei="'+ei+'" data-si="'+si+'" aria-label="Set done"></div>'}).join('')+
+      '<div style="margin-top:8px"><button class="btn ghost sm" data-act="addset" data-ei="'+ei+'">+ Add set</button></div></div>'}).join('')+'</div>';
+  }
+  var opts=EXS.map(function(x){return '<option>'+esc(x)+'</option>'}).join('');
+  var ed='<div class="panel"><h3>'+['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][ui.planDay]+' routine</h3>'+
+    '<div class="form"><input id="rn" type="text" maxlength="40" value="'+esc(rd.name)+'" placeholder="Routine name, e.g. Push day" data-chg="rname" aria-label="Routine name"></div>'+
+    (rd.ex.length?'<ul class="list" style="margin-top:8px">'+rd.ex.map(function(e){return '<li><span class="grow">'+esc(e.name)+'</span><input type="number" min="1" max="20" value="'+e.sets+'" data-chg="exsets" data-id="'+e.id+'" style="width:64px" aria-label="Sets"><span class="muted">×</span><input type="number" min="1" max="100" value="'+e.reps+'" data-chg="exreps" data-id="'+e.id+'" style="width:64px" aria-label="Reps"><button class="btn ghost sm" data-act="rmex" data-id="'+e.id+'" aria-label="Remove '+esc(e.name)+'">✕</button></li>'}).join('')+'</ul>':'<div class="empty" style="margin-top:8px">No exercises yet. Leave empty for a rest day.</div>')+
+    '<form data-form="addex" class="form" style="margin-top:14px"><select id="exsel" aria-label="Exercise">'+opts+'<option value="__custom">Custom…</option></select><input id="excustom" type="text" maxlength="50" placeholder="Custom exercise name" aria-label="Custom exercise" hidden><button class="btn" type="submit">Add to routine</button></form>'+
+    '<div class="row" style="margin-top:16px"><button class="btn" data-act="startlive"'+(rd.ex.length&&!S.live?'':' disabled style="opacity:.5;cursor:not-allowed"')+'>Start live workout</button>'+(S.live?'<span class="muted">Finish the current session first.</span>':'')+'</div></div>';
+  return head('Weekly gym plan','Plan each day, then log it live.')+tabs+live+ed;
+};
+
+V['gym-stats']=function(){
+  var by={};
+  S.workouts.forEach(function(w){w.entries.forEach(function(e){if(!e.sets.length)return;var b=bestSet(e.sets);(by[e.name]=by[e.name]||[]).push({d:w.date,w:b.w,r:b.r,v:e1rm(b.w,b.r)})})});
+  var names=Object.keys(by).sort();
+  var wkStart=iso(mondayOf(new Date()));
+  var vol=0;S.workouts.forEach(function(w){if(w.date>=wkStart)w.entries.forEach(function(e){e.sets.forEach(function(s){vol+=s.w*s.r})})});
+  var cards=names.map(function(n){
+    var a=by[n],f=a[0],l=a[a.length-1],ch=f.v?((l.v-f.v)/f.v*100):0;
+    var mx=Math.max.apply(null,a.map(function(x){return x.v})),mn=Math.min.apply(null,a.map(function(x){return x.v})),rg=(mx-mn)||1;
+    var pts=a.map(function(x,i){return (a.length===1?150:8+i*(284/(a.length-1)))+','+(48-(x.v-mn)/rg*40)});
+    var lastPt=pts[pts.length-1].split(',');
+    return '<div class="panel"><div class="row" style="justify-content:space-between"><h3 style="margin:0;font-size:17px;text-transform:none;letter-spacing:.01em;font-family:var(--body);font-weight:600">'+esc(n)+'</h3><span class="mono '+(ch>=0?'up':'down')+'">'+(ch>=0?'+':'')+ch.toFixed(1)+'%</span></div>'+
+    '<svg class="spark" viewBox="0 0 300 56" preserveAspectRatio="none" role="img" aria-label="Estimated 1RM trend"><polyline points="'+pts.join(' ')+'"/><circle cx="'+lastPt[0]+'" cy="'+lastPt[1]+'" r="3.5"/></svg>'+
+    '<div class="row mono" style="justify-content:space-between;font-size:13px"><span>Last: '+l.w+' kg × '+l.r+'</span><span>Est. 1RM '+l.v.toFixed(1)+' kg</span></div><div class="hint" style="margin-top:4px">'+a.length+' session'+(a.length===1?'':'s')+' · first 1RM '+f.v.toFixed(1)+' kg</div></div>'}).join('');
+  var recent=S.workouts.slice(-5).reverse().map(function(w){return '<li><span class="mono muted">'+w.date+'</span><span class="grow">'+esc(w.name||'Workout')+'</span><span class="hint">'+w.entries.reduce(function(a,e){return a+e.sets.length},0)+' sets</span>'+delBtn('workout',w.id)+'</li>'}).join('');
+  return head('Gym stats &amp; progression','Estimated 1RM uses the Epley formula: weight × (1 + reps ÷ 30).')+
+  '<div class="grid"><div class="tile" style="cursor:default"><span class="lab">Sessions logged</span><span class="big">'+S.workouts.length+'</span></div><div class="tile" style="cursor:default"><span class="lab">Volume this week</span><span class="big">'+fmtN(vol)+'<span style="font-size:18px"> kg</span></span></div></div>'+
+  (names.length?'<div class="grid">'+cards+'</div><div class="panel"><h3>Recent sessions</h3><ul class="list">'+recent+'</ul></div>':'<div class="empty">No workouts logged yet. Start a live session from Gym Plan and your lifts appear here.</div>');
+};
+
+V.calories=function(){
+  var d=ui.calDate,ms=mealsOn(d),kc=kcalOn(d),pr=ms.reduce(function(a,m){return a+(m.p||0)},0),rem=S.goal-kc,over=kc>S.goal;
+  var C=2*Math.PI*54,frac=Math.min(kc/S.goal,1);
+  var ring='<svg class="ring'+(over?' over':'')+'" viewBox="0 0 140 140" role="img" aria-label="'+kc+' of '+S.goal+' kcal"><circle class="trk" cx="70" cy="70" r="54"/><circle class="val" cx="70" cy="70" r="54" stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+(C*(1-frac)).toFixed(1)+'"/><text x="70" y="76" font-size="34">'+fmtN(Math.abs(rem))+'</text><text class="sm" x="70" y="94">'+(over?'kcal over':'kcal left')+'</text></svg>';
+  var days=[];for(var i=6;i>=0;i--)days.push(addDays(parse(d),-i));
+  var mx=Math.max(S.goal,Math.max.apply(null,days.map(function(x){return kcalOn(iso(x))})))*1.1;
+  var bars=days.map(function(x,i){var v=kcalOn(iso(x)),h=v/mx*70;return '<rect class="bar1'+(v>S.goal?' over':'')+'" x="'+(i*40+10)+'" y="'+(80-h)+'" width="24" height="'+h+'" rx="2"/><text x="'+(i*40+22)+'" y="94">'+DOW[(x.getDay()+6)%7][0]+'</text>'}).join('');
+  var gy=80-S.goal/mx*70;
+  var seen={},recent=[];for(var k in S.meals){S.meals[k].forEach(function(m){if(!seen[m.name.toLowerCase()]){seen[m.name.toLowerCase()]=1;recent.push(m)}})}
+  recent=recent.slice(-8).reverse();
+  return head('Calorie tracker',parse(d).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}),'<button class="btn ghost sm" data-act="calday" data-d="-1">‹</button><button class="btn ghost sm" data-act="calday" data-d="0">Today</button><button class="btn ghost sm" data-act="calday" data-d="1">›</button>')+
+  '<div class="split"><div class="panel"><div class="ringbox">'+ring+'<div style="flex:1 1 160px;min-width:0"><div class="mono">Eaten <b>'+fmtN(kc)+'</b> kcal</div><div class="mono">Goal <b>'+fmtN(S.goal)+'</b> kcal</div><div class="mono">Protein <b>'+Math.round(pr)+'</b> g</div>'+
+  '<form data-form="goal" class="form" style="margin-top:10px"><input id="gl" type="number" min="500" max="10000" step="50" value="'+S.goal+'" aria-label="Daily goal"><button class="btn ghost sm" type="submit">Set goal</button></form></div></div>'+
+  '<svg class="chart" viewBox="0 0 290 100" style="width:100%;margin-top:14px" role="img" aria-label="Last 7 days"><line class="goal" x1="0" x2="290" y1="'+gy+'" y2="'+gy+'"/>'+bars+'</svg><div class="hint">Last 7 days. Dashed line is your goal.</div></div>'+
+  '<div class="panel"><h3>Meals</h3>'+(ms.length?'<ul class="list">'+ms.map(function(m){return '<li><span class="grow">'+esc(m.name)+(m.p?' <span class="hint">'+m.p+' g protein</span>':'')+'</span><span class="mono">'+fmtN(m.kcal)+'</span>'+delBtn('meal',m.id)+'</li>'}).join('')+'</ul>':'<div class="empty">Nothing logged for this day.</div>')+
+  '<form data-form="meal" class="form" style="margin-top:14px"><input id="mn" type="text" maxlength="60" placeholder="Meal" required aria-label="Meal name"><input id="mk" type="number" min="0" max="10000" placeholder="kcal" required aria-label="Calories"><input id="mp" type="number" min="0" max="500" placeholder="protein g" aria-label="Protein"><button class="btn" type="submit">Log</button></form>'+
+  (recent.length?'<div class="lab2" style="margin:14px 0 6px">Log again</div><div class="chips">'+recent.map(function(m){return '<button class="chip" data-act="relog" data-n="'+esc(m.name)+'" data-k="'+m.kcal+'" data-p="'+(m.p||0)+'">'+esc(m.name)+' · '+m.kcal+'</button>'}).join('')+'</div>':'')+'</div></div>';
+};
+
+V.books=function(){
+  return head('Book tracker',S.books.filter(function(b){return b.cur>=b.pages&&b.pages}).length+' finished · '+S.books.filter(function(b){return b.cur<b.pages}).length+' in progress')+
+  (S.books.length?'<div class="grid">'+S.books.map(function(b){var p=b.pages?Math.round(b.cur/b.pages*100):0;
+    return '<div class="panel"><div class="row" style="justify-content:space-between;align-items:flex-start"><div style="min-width:0"><strong style="overflow-wrap:anywhere">'+esc(b.title)+'</strong><div class="muted" style="overflow-wrap:anywhere">'+esc(b.author||'Unknown author')+'</div></div>'+(p>=100?'<span class="pill">Finished</span>':'')+'</div>'+
+    '<div style="margin:12px 0 6px">'+bar(p)+'</div><div class="form"><input type="number" min="0" max="'+b.pages+'" value="'+b.cur+'" data-chg="bookpg" data-id="'+b.id+'" style="width:90px" aria-label="Current page"><span class="mono muted">/ '+b.pages+' pages · '+p+'%</span></div><div style="margin-top:10px">'+delBtn('book',b.id)+'</div></div>'}).join('')+'</div>':'<div class="empty">No books yet.</div>')+
+  '<div class="panel"><h3>Add a book</h3><form data-form="book" class="form"><input id="bt" type="text" maxlength="100" placeholder="Title" required aria-label="Title"><input id="ba" type="text" maxlength="80" placeholder="Author" aria-label="Author"><input id="bp" type="number" min="1" max="5000" placeholder="Pages" required aria-label="Total pages"><button class="btn" type="submit">Add book</button></form></div>';
+};
+
+V.notes=function(){
+  var q=ui.noteQ.toLowerCase();
+  var list=S.notes.filter(function(n){return !q||(n.title+' '+n.body).toLowerCase().indexOf(q)>-1}).sort(function(a,b){return (b.pin?1:0)-(a.pin?1:0)||b.t-a.t});
+  var ed=S.notes.filter(function(n){return n.id===ui.editNote})[0];
+  return head('Quick notes',S.notes.length+' note'+(S.notes.length===1?'':'s'))+
+  '<div class="panel"><form data-form="note"><div class="form"><input id="nt" type="text" maxlength="80" placeholder="Title (optional)" value="'+esc(ed?ed.title:'')+'" aria-label="Note title"></div><div style="height:8px"></div><textarea id="nb" placeholder="Write something…" aria-label="Note" required>'+esc(ed?ed.body:'')+'</textarea><div class="row" style="margin-top:8px"><button class="btn" type="submit">'+(ed?'Save changes':'Add note')+'</button>'+(ed?'<button class="btn ghost" type="button" data-act="cancelnote">Cancel</button>':'')+'</div></form></div>'+
+  '<div class="form"><input id="ns" type="text" placeholder="Search notes" value="'+esc(ui.noteQ)+'" data-chg="nsearch" aria-label="Search notes"></div>'+
+  (list.length?'<div class="notes">'+list.map(function(n){return '<div class="note'+(n.pin?' pin':'')+'">'+(n.title?'<h4>'+esc(n.title)+'</h4>':'')+'<p>'+esc(n.body)+'</p><div class="row"><button class="btn ghost sm" data-act="pin" data-id="'+n.id+'">'+(n.pin?'Unpin':'Pin')+'</button><button class="btn ghost sm" data-act="editnote" data-id="'+n.id+'">Edit</button>'+delBtn('note',n.id)+'</div></div>'}).join('')+'</div>':'<div class="empty">'+(q?'No notes match.':'No notes yet.')+'</div>');
+};
+
+V.focus=function(){
+  var t=ui.t,cfg=S.focusCfg;
+  return head('Focus timer','Sessions today: '+(S.sessions[today()]||0))+
+  '<div class="panel"><div class="timer"><div class="seg" role="group" aria-label="Mode">'+[['focus','Focus'],['short','Short break'],['long','Long break']].map(function(m){return '<button data-act="tmode" data-m="'+m[0]+'" aria-pressed="'+(t.mode===m[0])+'">'+m[1]+'</button>'}).join('')+'</div>'+
+  '<div class="t" id="tdisp" role="timer">'+fmtT(t.remaining)+'</div><div class="row"><button class="btn" data-act="tgo" id="tgo">'+(t.running?'Pause':'Start')+'</button><button class="btn ghost" data-act="treset">Reset</button></div></div></div>'+
+  '<div class="panel"><h3>Lengths (minutes)</h3><form data-form="tcfg" class="form"><label class="muted">Focus <input id="cf" type="number" min="1" max="180" value="'+cfg.focus+'" style="width:72px"></label><label class="muted">Short <input id="cs" type="number" min="1" max="60" value="'+cfg.short+'" style="width:72px"></label><label class="muted">Long <input id="cl" type="number" min="1" max="90" value="'+cfg.long+'" style="width:72px"></label><button class="btn ghost sm" type="submit">Save</button></form></div>';
+};
+function fmtT(s){s=Math.max(0,Math.ceil(s));return pad(Math.floor(s/60))+':'+pad(s%60)}
+
+V.prefs=function(){
+  return head('Settings &amp; data')+
+  '<div class="panel"><h3>Appearance</h3><div class="seg" role="group" aria-label="Theme">'+['light','dark','system'].map(function(t){return '<button data-act="theme" data-t="'+t+'" aria-pressed="'+(S.theme===t)+'">'+t[0].toUpperCase()+t.slice(1)+'</button>'}).join('')+'</div>'+
+  '<div class="lab2" style="margin:16px 0 8px">Accent colour</div><div class="sw">'+Object.keys(HUES).map(function(k){return '<button data-act="hue" data-h="'+HUES[k]+'" aria-pressed="'+(S.hue===HUES[k])+'" aria-label="'+k+'" title="'+k+'" style="background:hsl('+HUES[k]+' 65% 50%)"></button>'}).join('')+'</div></div>'+
+  authPanel()+
+  '<div class="panel"><h3>Data</h3><div class="row"><button class="btn" data-act="export">Export JSON</button><button class="btn ghost" data-act="importtoggle">Import JSON</button></div>'+
+  (ui.exportText?'<p class="muted" style="margin:12px 0 6px">Copy this backup and keep it somewhere safe.</p><textarea id="expt" readonly>'+esc(ui.exportText)+'</textarea>':'')+
+  (ui.importOpen?'<div style="margin-top:12px"><input type="file" id="impfile" accept=".json,application/json" aria-label="Backup file"><p class="muted" style="margin:10px 0 6px">Or paste a backup here.</p><textarea id="impt" placeholder="{ … }"></textarea><div class="row" style="margin-top:8px"><button class="btn" data-act="doimport">Replace my data with this</button></div></div>':'')+'</div>'+
+  '<div class="panel"><h3>Danger zone</h3><p class="muted" style="margin:0 0 10px">Removes every habit, workout, meal, book and note from this dashboard and its saved data.</p><button class="btn '+(ui.confirm==='reset'?'danger':'ghost')+'" data-act="reset">'+(ui.confirm==='reset'?'Yes, erase everything':'Factory reset')+'</button></div>';
+};
+
+/* ---------- render ---------- */
+function renderRail(){
+  $('#rail').innerHTML=MODS.map(function(m){return '<button data-act="nav" data-v="'+m[0]+'"'+(ui.view===m[0]?' aria-current="page"':'')+'>'+ic(m[0])+m[1]+'</button>'}).join('');
+}
+function render(){
+  var f=V[ui.view]||V.home;
+  var y=window.scrollY;
+  $('#app').innerHTML=f();
+  renderRail();
+  var sel=$('#exsel');if(sel)sel.dispatchEvent(new Event('change',{bubbles:true}));
+  window.scrollTo(0,y);
+}
+function applyTheme(){
+  var r=document.documentElement;
+  if(S.theme==='light'||S.theme==='dark')r.setAttribute('data-theme',S.theme);else r.removeAttribute('data-theme');
+  r.style.setProperty('--ah',S.hue);
+}
+
+/* ---------- actions ---------- */
+var A={
+ nav:function(el){location.hash=el.dataset.v==='home'?'':el.dataset.v;if(!location.hash){setView('home')}},
+ hab:function(el){var h=S.habits.filter(function(x){return x.id===el.dataset.id})[0],d=el.dataset.d;if(h.days[d])delete h.days[d];else h.days[d]=true;save();render()},
+ week:function(el){var d=+el.dataset.d;ui.weekOff=d===0?0:ui.weekOff+d;render()},
+ editH:function(){ui.editH=!ui.editH;render()},
+ cal:function(el){var d=+el.dataset.d;if(d===0){var n=new Date();ui.cal={y:n.getFullYear(),m:n.getMonth()};ui.sel=today()}else{var x=new Date(ui.cal.y,ui.cal.m+d,1);ui.cal={y:x.getFullYear(),m:x.getMonth()}}render()},
+ selday:function(el){ui.sel=el.dataset.d;var p=parse(ui.sel);ui.cal={y:p.getFullYear(),m:p.getMonth()};render()},
+ openproj:function(el){ui.proj=el.dataset.id;render()},
+ projback:function(){ui.proj=null;render()},
+ plan:function(el){ui.planDay=+el.dataset.d;render()},
+ rmex:function(el){S.routines[ui.planDay].ex=S.routines[ui.planDay].ex.filter(function(e){return e.id!==el.dataset.id});save();render()},
+ startlive:function(){
+  var rd=S.routines[ui.planDay];if(!rd.ex.length||S.live)return;
+  S.live={name:rd.name||DOW[ui.planDay],started:Date.now(),entries:rd.ex.map(function(e){var lp=null;for(var i=S.workouts.length-1;i>=0&&!lp;i--){lp=S.workouts[i].entries.filter(function(x){return x.name===e.name})[0]}var sets=[];for(var k=0;k<e.sets;k++){var s=lp&&lp.sets[k]?lp.sets[k]:null;sets.push({w:s?s.w:'',r:s?s.r:e.reps,done:false})}return {name:e.name,sets:sets}})};
+  save();render();
+ },
+ addset:function(el){var e=S.live.entries[+el.dataset.ei];var l=e.sets[e.sets.length-1]||{w:'',r:8};e.sets.push({w:l.w,r:l.r,done:false});save();render()},
+ cancellive:function(){if(ui.confirm==='live'){ui.confirm=null;S.live=null;save();render()}else{ui.confirm='live';render()}},
+ finish:function(){
+  var entries=S.live.entries.map(function(e){return {name:e.name,sets:e.sets.filter(function(s){return (s.done||s.w!=='')&&num(s.r)>0}).map(function(s){return {w:num(s.w),r:num(s.r)}})}}).filter(function(e){return e.sets.length});
+  if(!entries.length){toast('Log at least one set first.');return}
+  S.workouts.push({id:uid(),date:today(),name:S.live.name,entries:entries,mins:Math.round((Date.now()-S.live.started)/60000)});
+  S.live=null;save();toast('Workout saved.');render();
+ },
+ calday:function(el){var d=+el.dataset.d;ui.calDate=d===0?today():iso(addDays(parse(ui.calDate),d));render()},
+ relog:function(el){(S.meals[ui.calDate]=S.meals[ui.calDate]||[]).push({id:uid(),name:el.dataset.n,kcal:+el.dataset.k,p:+el.dataset.p});save();render()},
+ pin:function(el){var n=S.notes.filter(function(x){return x.id===el.dataset.id})[0];n.pin=!n.pin;save();render()},
+ editnote:function(el){ui.editNote=el.dataset.id;render();window.scrollTo(0,0)},
+ cancelnote:function(){ui.editNote=null;render()},
+ tmode:function(el){setMode(el.dataset.m)},
+ tgo:function(){var t=ui.t;if(t.running){t.remaining=(t.end-Date.now())/1000;t.running=false}else{if(t.remaining<=0)t.remaining=S.focusCfg[t.mode]*60;t.end=Date.now()+t.remaining*1000;t.running=true;beep(0)}paintTimer();$('#tgo').textContent=t.running?'Pause':'Start'},
+ treset:function(){var t=ui.t;t.running=false;t.remaining=S.focusCfg[t.mode]*60;render()},
+ theme:function(el){S.theme=el.dataset.t;applyTheme();save();render()},
+ hue:function(el){S.hue=+el.dataset.h;applyTheme();save();render()},
+ export:function(){
+  var txt=JSON.stringify(S,null,2);ui.exportText=txt;render();
+  try{var bl=new Blob([txt],{type:'application/json'}),u=URL.createObjectURL(bl),a=document.createElement('a');a.href=u;a.download='command-centre-backup-'+today()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},1000)}catch(e){}
+ },
+ clearcfg:function(){if(!asked('clearcfg'))return;D.clearConfig();location.reload()},
+ syncnow:function(){if(D.pull)D.pull()},
+ signout:async function(){try{await D.auth.signOut();toast('Signed out.')}catch(e){toast('Could not sign out.')}},
+ importtoggle:function(){ui.importOpen=!ui.importOpen;render()},
+ doimport:async function(){
+  var txt=($('#impt')||{}).value||'';
+  var f=$('#impfile');
+  try{
+    if(!txt.trim()&&f&&f.files[0])txt=await f.files[0].text();
+    var o=JSON.parse(txt);if(!o||!o.habits||!o.routines)throw new Error('bad');
+    S=normalise(o);ui.importOpen=false;applyTheme();save();toast('Data imported.');render();
+  }catch(e){toast('That file is not a valid backup.')}
+ },
+ reset:function(){if(ui.confirm==='reset'){ui.confirm=null;S=defaults();ui.proj=null;applyTheme();save();toast('Everything was reset.');render()}else{ui.confirm='reset';render()}},
+ del:function(el){
+  var kind=el.dataset.kind,id=el.dataset.id,key=kind+':'+id+(el.dataset.x||'');
+  if(!asked(key))return;
+  if(kind==='habit')S.habits=S.habits.filter(function(x){return x.id!==id});
+  if(kind==='event')S.events=S.events.filter(function(x){return x.id!==id});
+  if(kind==='project'){S.projects=S.projects.filter(function(x){return x.id!==id});ui.proj=null}
+  if(kind==='task'){var p=S.projects.filter(function(x){return x.id===ui.proj})[0];p.tasks=p.tasks.filter(function(x){return x.id!==id})}
+  if(kind==='workout')S.workouts=S.workouts.filter(function(x){return x.id!==id});
+  if(kind==='meal')S.meals[ui.calDate]=mealsOn(ui.calDate).filter(function(x){return x.id!==id});
+  if(kind==='book')S.books=S.books.filter(function(x){return x.id!==id});
+  if(kind==='note')S.notes=S.notes.filter(function(x){return x.id!==id});
+  save();render();
+ }
+};
+var F={
+ auth:async function(f,e){
+  var A=D.auth;if(!A)return;
+  var mode=(e.submitter&&e.submitter.dataset.mode)||'in',em=$('#ae').value.trim(),pw=$('#ap').value;
+  ui.sync=mode==='up'?'Creating account…':'Signing in…';paintSync();
+  try{
+    var r=await (mode==='up'?A.signUp(em,pw):A.signIn(em,pw));
+    if(r&&r.confirmEmail){ui.sync='Check your email to confirm your account, then sign in.';paintSync();toast('Confirmation email sent.')}
+  }catch(err){ui.sync=(err&&err.message)||'Could not sign in.';paintSync()}
+ },
+ setup:function(){var u=$('#su').value.trim(),k=$('#sk').value.trim();var p;try{p=new URL(u);if(p.protocol!=='https:')throw 0}catch(e){toast('Enter the full https:// project URL.');return}D.saveConfig(p.origin,k);location.reload()},
+ focus:function(f){var v=$('#fi').value.trim();if(v)S.todayFocus[today()]=v;else delete S.todayFocus[today()];save();toast('Focus saved.')},
+ habit:function(){var v=$('#hn').value.trim();if(!v)return;S.habits.push({id:uid(),name:v,days:{}});save();render()},
+ event:function(){var v=$('#ex').value.trim();if(!v)return;S.events.push({id:uid(),date:ui.sel,time:$('#et').value,title:v});save();render()},
+ project:function(){var v=$('#pn').value.trim();if(!v)return;var p={id:uid(),name:v,tasks:[]};S.projects.push(p);ui.proj=p.id;save();render()},
+ task:function(){var v=$('#tn').value.trim();if(!v)return;S.projects.filter(function(x){return x.id===ui.proj})[0].tasks.push({id:uid(),text:v,done:false});save();render()},
+ addex:function(){
+  var s=$('#exsel').value,name=s==='__custom'?$('#excustom').value.trim():s;if(!name)return;
+  S.routines[ui.planDay].ex.push({id:uid(),name:name,sets:3,reps:8});save();render();
+ },
+ goal:function(){var v=num($('#gl').value);if(v>=500){S.goal=Math.round(v);save();render()}},
+ meal:function(){var n=$('#mn').value.trim(),k=num($('#mk').value);if(!n||k<0)return;(S.meals[ui.calDate]=S.meals[ui.calDate]||[]).push({id:uid(),name:n,kcal:Math.round(k),p:num($('#mp').value)});save();render()},
+ book:function(){var t=$('#bt').value.trim(),p=Math.round(num($('#bp').value));if(!t||p<1)return;S.books.push({id:uid(),title:t,author:$('#ba').value.trim(),pages:p,cur:0});save();render()},
+ note:function(){
+  var b=$('#nb').value.trim(),t=$('#nt').value.trim();if(!b)return;
+  if(ui.editNote){var n=S.notes.filter(function(x){return x.id===ui.editNote})[0];n.title=t;n.body=b;ui.editNote=null}
+  else S.notes.push({id:uid(),title:t,body:b,pin:false,t:Date.now()});
+  save();render();
+ },
+ tcfg:function(){S.focusCfg={focus:clamp($('#cf').value,1,180),short:clamp($('#cs').value,1,60),long:clamp($('#cl').value,1,90)};if(!ui.t.running)ui.t.remaining=S.focusCfg[ui.t.mode]*60;save();render();toast('Timer lengths saved.')}
+};
+function clamp(v,a,b){v=Math.round(num(v));return Math.max(a,Math.min(b,v||a))}
+var C={
+ hname:function(el){var h=S.habits.filter(function(x){return x.id===el.dataset.id})[0];if(el.value.trim())h.name=el.value.trim();save()},
+ task:function(el){var p=S.projects.filter(function(x){return x.id===ui.proj})[0];p.tasks.filter(function(t){return t.id===el.dataset.id})[0].done=el.checked;save();render()},
+ rname:function(el){S.routines[ui.planDay].name=el.value.trim();save();var n=$('.days [aria-pressed="true"] .n');if(n)n.textContent=el.value.trim()||'Rest'},
+ exsets:function(el){S.routines[ui.planDay].ex.filter(function(e){return e.id===el.dataset.id})[0].sets=clamp(el.value,1,20);save()},
+ exreps:function(el){S.routines[ui.planDay].ex.filter(function(e){return e.id===el.dataset.id})[0].reps=clamp(el.value,1,100);save()},
+ lw:function(el){S.live.entries[+el.dataset.ei].sets[+el.dataset.si].w=el.value===''?'':num(el.value);save()},
+ lr:function(el){S.live.entries[+el.dataset.ei].sets[+el.dataset.si].r=el.value===''?'':num(el.value);save()},
+ ld:function(el){S.live.entries[+el.dataset.ei].sets[+el.dataset.si].done=el.checked;save()},
+ bookpg:function(el){var b=S.books.filter(function(x){return x.id===el.dataset.id})[0];b.cur=Math.max(0,Math.min(b.pages,Math.round(num(el.value))));save();render()}
+};
+
+/* ---------- timer ---------- */
+function setMode(m){var t=ui.t;t.mode=m;t.running=false;t.remaining=S.focusCfg[m]*60;render()}
+function paintTimer(){var t=ui.t,e=$('#tdisp');var s=t.running?(t.end-Date.now())/1000:t.remaining;if(e)e.textContent=fmtT(s);document.title=t.running?fmtT(s)+' · Command Centre':'Command Centre'}
+var audio=null;
+function beep(n){try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();var o=audio.createOscillator(),g=audio.createGain();o.frequency.value=n?880:440;g.gain.value=n?.15:.0001;o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+(n?.5:.01))}catch(e){}}
+setInterval(function(){
+  var t=ui.t;
+  if(t.running){
+    var left=(t.end-Date.now())/1000;
+    if(left<=0){t.running=false;t.remaining=0;if(t.mode==='focus'){S.sessions[today()]=(S.sessions[today()]||0)+1;save()}beep(1);toast(t.mode==='focus'?'Focus session complete.':'Break is over.');if(ui.view==='focus')render();else paintTimer();document.title='Command Centre'}
+    else paintTimer();
+  }
+},250);
+function tick(){var d=new Date();var e=$('#clock');if(e)e.textContent=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())}
+tick();setInterval(tick,1000);
+
+/* ---------- events ---------- */
+document.addEventListener('click',function(e){
+  var el=e.target.closest('[data-act]');
+  if(!el){if(ui.confirm){ui.confirm=null;var inForm=e.target.closest('input,textarea,select');if(!inForm)render()}return}
+  var f=A[el.dataset.act];if(f)f(el,e);
+});
+document.addEventListener('submit',function(e){
+  var f=e.target.closest('[data-form]');if(!f)return;e.preventDefault();var fn=F[f.dataset.form];if(fn)fn(f,e);
+});
+document.addEventListener('change',function(e){
+  var el=e.target;
+  if(el.id==='exsel'){var c=$('#excustom');if(c)c.hidden=el.value!=='__custom';if(c&&!c.hidden)c.focus();return}
+  if(el.dataset&&el.dataset.chg&&el.dataset.chg!=='nsearch'){var fn=C[el.dataset.chg];if(fn)fn(el)}
+});
+document.addEventListener('input',function(e){
+  var el=e.target;
+  if(el.dataset&&el.dataset.chg==='nsearch'){ui.noteQ=el.value;var pos=el.selectionStart;render();var n=$('#ns');if(n){n.focus();n.setSelectionRange(pos,pos)}}
+});
+function setView(v){if(!V[v])v='home';ui.view=v;ui.confirm=null;render();window.scrollTo(0,0)}
+window.addEventListener('hashchange',function(){setView(location.hash.replace('#','')||'home')});
+
+/* ---------- boot ---------- */
+(async function(){
+  try{var l=await D.load();if(l)S=normalise(l)}catch(e){}
+  applyTheme();
+  var h=location.hash.replace('#','');ui.view=V[h]?h:'home';
+  ui.t.remaining=S.focusCfg.focus*60;
+  render();
+  if(D.start)D.start(window.CC);
+})();
+})();
+</script>
 </body>
 </html>
