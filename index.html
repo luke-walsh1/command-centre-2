@@ -233,6 +233,7 @@ table.hab{border-collapse:collapse;width:100%;min-width:560px}
   function niceError(e) {
     var m = (e && e.message) || 'Something went wrong.';
     if (/relation .* does not exist|schema cache|PGRST205/i.test(m)) return 'Table missing. Run the SQL setup in Supabase first.';
+    if (/permission denied/i.test(m)) return 'Permission denied. Re-run supabase-setup.sql in Supabase (it grants table access).';
     if (/Invalid API key|apikey/i.test(m)) return 'Supabase rejected the API key. Check it in Settings.';
     if (/Failed to fetch|NetworkError|network/i.test(m)) return 'No connection to Supabase.';
     return m;

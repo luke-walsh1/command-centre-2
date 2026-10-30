@@ -5,6 +5,10 @@ create table if not exists public.dashboard_state (
   updated_at timestamptz not null default now()
 );
 
+-- Newer Supabase projects do not grant table access automatically
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on public.dashboard_state to authenticated;
+
 alter table public.dashboard_state enable row level security;
 
 drop policy if exists "own row select" on public.dashboard_state;
