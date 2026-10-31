@@ -150,6 +150,12 @@ table.hab{border-collapse:collapse;width:100%;min-width:560px}
 .spark polyline{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 .spark circle{fill:var(--accent)}
 .wl{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}.wd{fill:var(--muted);opacity:.75}
+.wp{fill:var(--accent);stroke:var(--surface);stroke-width:1.5}
+.prstar{color:var(--accent);font-weight:700;text-align:center}
+.sug{margin-top:2px;color:var(--fg);display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-family:var(--body);font-size:13px}
+.restbar{position:sticky;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:6;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--accent);border-radius:8px;padding:8px 12px;margin-top:16px;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+.restbar[hidden]{display:none}
+.restbar #restt{font-size:24px;color:var(--accent)}
 .up{color:var(--good)}.down{color:var(--bad)}
 /* calories */
 .ringbox{display:flex;flex-wrap:wrap;gap:20px;align-items:center}
@@ -427,11 +433,11 @@ function defaults(){
     habits:[{id:uid(),name:'Drink 3L water',days:{}},{id:uid(),name:'Read 20 minutes',days:{}},{id:uid(),name:'Train or walk',days:{}},{id:uid(),name:'In bed before 23:00',days:{}}],
     events:[],projects:[],routines:r,workouts:[],live:null,
     goal:3300,meals:{},books:[],notes:[],
-    focusCfg:{focus:25,short:5,long:15},sessions:{},todayFocus:{},miniMin:5,weights:{},wtarget:0,reviews:{}};
+    focusCfg:{focus:25,short:5,long:15},sessions:{},todayFocus:{},miniMin:5,weights:{},wtarget:0,reviews:{},exlist:EXS.slice(),restSec:90};
 }
 var S=defaults();
 function normalise(o){var d=defaults();for(var k in d){if(o[k]===undefined)o[k]=d[k]}for(var i=0;i<7;i++){if(!o.routines[i])o.routines[i]={name:'',ex:[]}}return o}
-var ui={view:'home',weekOff:0,cal:{y:new Date().getFullYear(),m:new Date().getMonth()},sel:iso(new Date()),proj:null,planDay:(new Date().getDay()+6)%7,calDate:iso(new Date()),editNote:null,noteQ:'',revOff:0,wRange:90,wDate:iso(new Date()),editH:false,confirm:null,sync:'Local only',importOpen:false,exportText:'',
+var ui={view:'home',weekOff:0,cal:{y:new Date().getFullYear(),m:new Date().getMonth()},sel:iso(new Date()),proj:null,planDay:(new Date().getDay()+6)%7,calDate:iso(new Date()),editNote:null,noteQ:'',revOff:0,wRange:90,exMgr:false,exDetail:null,exMetric:'1rm',rest:{end:0},wDate:iso(new Date()),editH:false,confirm:null,sync:'Local only',importOpen:false,exportText:'',
   t:{mode:'focus',remaining:25*60,end:0,running:false}};
 /* ===== DATA ADAPTER BOUNDARY =====
    The UI never talks to a backend. It only calls window.CCData (see README.md):
@@ -620,38 +626,67 @@ V['gym-plan']=function(){
   var live='';
   if(S.live){
     live='<div class="panel live"><div class="row" style="justify-content:space-between"><div><span class="pill">Session in progress</span><h3 style="margin-top:8px">'+esc(S.live.name||'Workout')+'</h3></div><div class="row"><button class="btn" data-act="finish">Finish &amp; save</button>'+'<button class="btn '+(ui.confirm==='live'?'danger':'ghost')+'" data-act="cancellive">'+(ui.confirm==='live'?'Discard session?':'Cancel')+'</button></div></div>'+
-    '<p class="muted" style="margin:6px 0 0">Log what you lifted. The hint shows your last best set, so you can beat it.</p>'+
-    S.live.entries.map(function(e,ei){var lp=lastPerf(e.name);
+    '<p class="muted" style="margin:6px 0 0">Log what you lifted and tick each set. Ticking starts the rest timer. A star means a new personal record.</p>'+
+    '<div class="form" style="margin-top:10px"><label class="hint" for="rsec">Rest between sets</label><input id="rsec" type="number" min="10" max="600" step="5" value="'+(S.restSec||90)+'" data-chg="restsec" style="width:80px" aria-label="Rest seconds"><span class="hint">seconds</span></div>'+
+    S.live.entries.map(function(e,ei){var lp=lastPerf(e.name),sg=sugFor(e.name,e.tr||(e.sets[0]&&num(e.sets[0].r))||8);
       return '<div style="margin-top:16px"><div class="row" style="justify-content:space-between"><strong>'+esc(e.name)+'</strong><span class="hint">'+(lp?'Last best: '+lp:'First time')+'</span></div>'+
-      e.sets.map(function(s,si){return '<div class="setrow"><span class="mono muted">'+(si+1)+'</span><input type="number" inputmode="decimal" step="0.5" min="0" placeholder="kg" value="'+(s.w===''?'':s.w)+'" data-chg="lw" data-ei="'+ei+'" data-si="'+si+'" aria-label="Weight, set '+(si+1)+'"><input type="number" inputmode="numeric" min="0" placeholder="reps" value="'+(s.r===''?'':s.r)+'" data-chg="lr" data-ei="'+ei+'" data-si="'+si+'" aria-label="Reps, set '+(si+1)+'"><input type="checkbox" '+(s.done?'checked':'')+' data-chg="ld" data-ei="'+ei+'" data-si="'+si+'" aria-label="Set done"></div>'}).join('')+
-      '<div style="margin-top:8px"><button class="btn ghost sm" data-act="addset" data-ei="'+ei+'">+ Add set</button></div></div>'}).join('')+'</div>';
+      (sg?'<div class="hint sug">'+esc(sg.text)+(sg.w!=null?' <button class="btn ghost sm" data-act="applysug" data-ei="'+ei+'" data-w="'+sg.w+'">Use '+sg.w+' kg</button>':'')+'</div>':'')+
+      e.sets.map(function(s,si){return '<div class="setrow"><span class="mono '+(s.pr?'prstar':'muted')+'" title="'+(s.pr?'New personal record':'')+'">'+(s.pr?'★':(si+1))+'</span><input type="number" inputmode="decimal" step="0.5" min="0" placeholder="kg" value="'+(s.w===''?'':s.w)+'" data-chg="lw" data-ei="'+ei+'" data-si="'+si+'" aria-label="Weight, set '+(si+1)+'"><input type="number" inputmode="numeric" min="0" placeholder="reps" value="'+(s.r===''?'':s.r)+'" data-chg="lr" data-ei="'+ei+'" data-si="'+si+'" aria-label="Reps, set '+(si+1)+'"><input type="checkbox" '+(s.done?'checked':'')+' data-chg="ld" data-ei="'+ei+'" data-si="'+si+'" aria-label="Set done"></div>'}).join('')+
+      '<div style="margin-top:8px"><button class="btn ghost sm" data-act="addset" data-ei="'+ei+'">+ Add set</button></div></div>'}).join('')+
+    '<form data-form="liveex" class="form" style="margin-top:18px"><select id="lexsel" data-cust="lexcustom" aria-label="Exercise to add">'+exOptions()+'</select><input id="lexcustom" type="text" maxlength="50" placeholder="Custom exercise name" aria-label="Custom exercise" hidden><button class="btn ghost" type="submit">Add exercise to session</button></form>'+
+    '<div class="restbar" id="restbar"'+(restLeft()>0?'':' hidden')+'>'+(restLeft()>0?restInner(restLeft()):'')+'</div></div>';
   }
-  var opts=EXS.map(function(x){return '<option>'+esc(x)+'</option>'}).join('');
+  var mgr=ui.exMgr?'<div class="panel"><h3>Exercise list</h3><p class="muted" style="margin:0 0 10px">These are the choices in the exercise dropdowns. Renaming also updates your routines and workout history. Removing only takes it off the list; your history stays.</p>'+
+    (exList().length?'<ul class="list">'+exList().map(function(x,i){return '<li><input type="text" maxlength="50" value="'+esc(x)+'" data-chg="exren" data-i="'+i+'" aria-label="Exercise name" style="flex:1 1 140px;min-width:0">'+delBtn('exlist',i,'','Remove','Confirm remove')+'</li>'}).join('')+'</ul>':'<div class="empty">The list is empty. Add your own below.</div>')+
+    '<form data-form="exadd" class="form" style="margin-top:12px"><input id="exnew" type="text" maxlength="50" placeholder="New exercise name" required aria-label="New exercise"><button class="btn" type="submit">Add to list</button></form>'+
+    '<div class="row" style="margin-top:12px"><button class="btn ghost sm" data-act="exsort">Sort A–Z</button><button class="btn ghost sm" data-act="exdefaults">Restore missing defaults</button></div></div>':'';
+  var opts=exList().map(function(x){return '<option>'+esc(x)+'</option>'}).join('');
   var ed='<div class="panel"><h3>'+['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][ui.planDay]+' routine</h3>'+
     '<div class="form"><input id="rn" type="text" maxlength="40" value="'+esc(rd.name)+'" placeholder="Routine name, e.g. Push day" data-chg="rname" aria-label="Routine name"></div>'+
     (rd.ex.length?'<ul class="list" style="margin-top:8px">'+rd.ex.map(function(e){return '<li><span class="grow">'+esc(e.name)+'</span><input type="number" min="1" max="20" value="'+e.sets+'" data-chg="exsets" data-id="'+e.id+'" style="width:64px" aria-label="Sets"><span class="muted">×</span><input type="number" min="1" max="100" value="'+e.reps+'" data-chg="exreps" data-id="'+e.id+'" style="width:64px" aria-label="Reps"><button class="btn ghost sm" data-act="rmex" data-id="'+e.id+'" aria-label="Remove '+esc(e.name)+'">✕</button></li>'}).join('')+'</ul>':'<div class="empty" style="margin-top:8px">No exercises yet. Leave empty for a rest day.</div>')+
-    '<form data-form="addex" class="form" style="margin-top:14px"><select id="exsel" aria-label="Exercise">'+opts+'<option value="__custom">Custom…</option></select><input id="excustom" type="text" maxlength="50" placeholder="Custom exercise name" aria-label="Custom exercise" hidden><button class="btn" type="submit">Add to routine</button></form>'+
+    '<form data-form="addex" class="form" style="margin-top:14px"><select id="exsel" data-cust="excustom" aria-label="Exercise">'+opts+'<option value="__custom">Custom…</option></select><input id="excustom" type="text" maxlength="50" placeholder="Custom exercise name" aria-label="Custom exercise" hidden><button class="btn" type="submit">Add to routine</button><button class="btn ghost" type="button" data-act="exmgr" aria-pressed="'+ui.exMgr+'">'+(ui.exMgr?'Hide list editor':'Edit exercise list')+'</button></form>'+
     '<div class="row" style="margin-top:16px"><button class="btn" data-act="startlive"'+(rd.ex.length&&!S.live?'':' disabled style="opacity:.5;cursor:not-allowed"')+'>Start live workout</button>'+(S.live?'<span class="muted">Finish the current session first.</span>':'')+'</div></div>';
-  return head('Weekly gym plan','Plan each day, then log it live.')+tabs+live+ed;
+  return head('Weekly gym plan','Plan each day, then log it live.')+tabs+live+ed+mgr;
 };
 
+function exDetailView(){
+  var n=ui.exDetail,h=exHistory(n);
+  if(!h.length){ui.exDetail=null;return V['gym-stats']()}
+  var M={'1rm':['Est. 1RM',function(x){return x.v}],weight:['Top weight',function(x){return x.top}],vol:['Volume',function(x){return x.vol}]},m=M[ui.exMetric]||M['1rm'];
+  var best=h.reduce(function(a,x){return x.v>a.v?x:a},h[0]),heavy=h.reduce(function(a,x){return x.top>a.top?x:a},h[0]),prs=h.filter(function(x){return x.pr}).length,totVol=h.reduce(function(a,x){return a+x.vol},0);
+  var tog=Object.keys(M).map(function(k){return '<button class="btn sm'+(ui.exMetric===k?'':' ghost')+'" data-act="exmetric" data-m="'+k+'" aria-pressed="'+(ui.exMetric===k)+'">'+M[k][0]+'</button>'}).join('');
+  var dl=function(d){return parse(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})};
+  var rows=h.slice().reverse().map(function(x){return '<li style="flex-wrap:wrap"><span class="mono muted">'+x.d+'</span><span class="grow mono" style="font-size:13px">'+x.sets.map(function(q){return q.w+'×'+q.r}).join(', ')+'</span>'+(x.pr?'<span class="pill">PR</span>':'')+'<span class="hint">'+x.v.toFixed(1)+' kg</span></li>'}).join('');
+  return head(esc(n),h.length+' session'+(h.length===1?'':'s')+' logged','<button class="btn ghost sm" data-act="exback">‹ All exercises</button>')+
+  '<div class="grid">'+
+   '<div class="tile" style="cursor:default"><span class="lab">Best est. 1RM</span><span class="big">'+best.v.toFixed(1)+'<span style="font-size:18px"> kg</span></span><span class="sub">'+dl(best.d)+'</span></div>'+
+   '<div class="tile" style="cursor:default"><span class="lab">Heaviest set</span><span class="big">'+heavy.top+'<span style="font-size:18px"> kg</span></span><span class="sub">'+dl(heavy.d)+'</span></div>'+
+   '<div class="tile" style="cursor:default"><span class="lab">Personal records</span><span class="big">'+prs+'</span><span class="sub">'+(prs?'sessions that beat your best':'Beat your best 1RM to set one')+'</span></div>'+
+   '<div class="tile" style="cursor:default"><span class="lab">Total volume</span><span class="big">'+fmtN(totVol)+'<span style="font-size:18px"> kg</span></span></div>'+
+  '</div>'+
+  '<div class="panel"><div class="row" style="justify-content:space-between;margin-bottom:10px"><h3 style="margin:0">'+m[0]+' by session</h3><div class="row">'+tog+'</div></div>'+
+   lineChart(h.map(function(x){return {k:x.d,v:m[1](x),pr:x.pr}}),'kg',m[0]+' over time')+'<div class="hint">Larger dots are personal records.</div></div>'+
+  '<div class="panel"><h3>All sessions</h3><ul class="list">'+rows+'</ul></div>';
+}
 V['gym-stats']=function(){
+  if(ui.exDetail)return exDetailView();
   var by={};
   S.workouts.forEach(function(w){w.entries.forEach(function(e){if(!e.sets.length)return;var b=bestSet(e.sets);(by[e.name]=by[e.name]||[]).push({d:w.date,w:b.w,r:b.r,v:e1rm(b.w,b.r)})})});
   var names=Object.keys(by).sort();
   var wkStart=iso(mondayOf(new Date()));
   var vol=0;S.workouts.forEach(function(w){if(w.date>=wkStart)w.entries.forEach(function(e){e.sets.forEach(function(s){vol+=s.w*s.r})})});
+  var cut=iso(addDays(new Date(),-30)),prn=0;names.forEach(function(n){exHistory(n).forEach(function(x){if(x.pr&&x.d>=cut)prn++})});
   var cards=names.map(function(n){
     var a=by[n],f=a[0],l=a[a.length-1],ch=f.v?((l.v-f.v)/f.v*100):0;
     var mx=Math.max.apply(null,a.map(function(x){return x.v})),mn=Math.min.apply(null,a.map(function(x){return x.v})),rg=(mx-mn)||1;
     var pts=a.map(function(x,i){return (a.length===1?150:8+i*(284/(a.length-1)))+','+(48-(x.v-mn)/rg*40)});
     var lastPt=pts[pts.length-1].split(',');
-    return '<div class="panel"><div class="row" style="justify-content:space-between"><h3 style="margin:0;font-size:17px;text-transform:none;letter-spacing:.01em;font-family:var(--body);font-weight:600">'+esc(n)+'</h3><span class="mono '+(ch>=0?'up':'down')+'">'+(ch>=0?'+':'')+ch.toFixed(1)+'%</span></div>'+
+    return '<div class="panel"><div class="row" style="justify-content:space-between"><h3 style="margin:0;font-size:17px;text-transform:none;letter-spacing:.01em;font-family:var(--body);font-weight:600">'+esc(n)+'</h3><span class="row">'+(exHistory(n).slice(-1)[0].pr?'<span class="pill">PR</span>':'')+'<span class="mono '+(ch>=0?'up':'down')+'">'+(ch>=0?'+':'')+ch.toFixed(1)+'%</span></span></div>'+
     '<svg class="spark" viewBox="0 0 300 56" preserveAspectRatio="none" role="img" aria-label="Estimated 1RM trend"><polyline points="'+pts.join(' ')+'"/><circle cx="'+lastPt[0]+'" cy="'+lastPt[1]+'" r="3.5"/></svg>'+
-    '<div class="row mono" style="justify-content:space-between;font-size:13px"><span>Last: '+l.w+' kg × '+l.r+'</span><span>Est. 1RM '+l.v.toFixed(1)+' kg</span></div><div class="hint" style="margin-top:4px">'+a.length+' session'+(a.length===1?'':'s')+' · first 1RM '+f.v.toFixed(1)+' kg</div></div>'}).join('');
-  var recent=S.workouts.slice(-5).reverse().map(function(w){return '<li><span class="mono muted">'+w.date+'</span><span class="grow">'+esc(w.name||'Workout')+'</span><span class="hint">'+w.entries.reduce(function(a,e){return a+e.sets.length},0)+' sets</span>'+delBtn('workout',w.id)+'</li>'}).join('');
+    '<div class="row mono" style="justify-content:space-between;font-size:13px"><span>Last: '+l.w+' kg × '+l.r+'</span><span>Est. 1RM '+l.v.toFixed(1)+' kg</span></div><div class="hint" style="margin-top:4px">'+a.length+' session'+(a.length===1?'':'s')+' · first 1RM '+f.v.toFixed(1)+' kg</div><div style="margin-top:10px"><button class="btn ghost sm" data-act="exdetail" data-n="'+esc(n)+'">History &amp; chart ›</button></div></div>'}).join('');
+  var recent=S.workouts.slice(-5).reverse().map(function(w){return '<li><span class="mono muted">'+w.date+'</span><span class="grow">'+esc(w.name||'Workout')+(w.prs?' <span class="pill">'+w.prs+' PR'+(w.prs>1?'s':'')+'</span>':'')+'</span><span class="hint">'+w.entries.reduce(function(a,e){return a+e.sets.length},0)+' sets</span>'+delBtn('workout',w.id)+'</li>'}).join('');
   return head('Gym stats &amp; progression','Estimated 1RM uses the Epley formula: weight × (1 + reps ÷ 30).')+
-  '<div class="grid"><div class="tile" style="cursor:default"><span class="lab">Sessions logged</span><span class="big">'+S.workouts.length+'</span></div><div class="tile" style="cursor:default"><span class="lab">Volume this week</span><span class="big">'+fmtN(vol)+'<span style="font-size:18px"> kg</span></span></div></div>'+
+  '<div class="grid"><div class="tile" style="cursor:default"><span class="lab">Sessions logged</span><span class="big">'+S.workouts.length+'</span></div><div class="tile" style="cursor:default"><span class="lab">Volume this week</span><span class="big">'+fmtN(vol)+'<span style="font-size:18px"> kg</span></span></div><div class="tile" style="cursor:default"><span class="lab">PRs, last 30 days</span><span class="big">'+prn+'</span></div></div>'+
   (names.length?'<div class="grid">'+cards+'</div><div class="panel"><h3>Recent sessions</h3><ul class="list">'+recent+'</ul></div>':'<div class="empty">No workouts logged yet. Start a live session from Gym Plan and your lifts appear here.</div>');
 };
 
@@ -691,7 +726,7 @@ V.body=function(){
       return X(k).toFixed(1)+','+Y(a.reduce(function(p,q){return p+q},0)/a.length).toFixed(1)});
     var dots=ks.map(function(k){return '<circle class="wd" cx="'+X(k).toFixed(1)+'" cy="'+Y(S.weights[k]).toFixed(1)+'" r="2.6"/>'}).join('');
     var short=function(k){return parse(k).toLocaleDateString('en-GB',{day:'numeric',month:'short'})};
-    chart='<svg class="chart" viewBox="0 0 300 126" style="width:100%" role="img" aria-label="Bodyweight over time">'+
+    chart='<svg class="chart" viewBox="0 0 300 126" style="width:100%;max-width:560px;display:block" role="img" aria-label="Bodyweight over time">'+
       '<text x="30" y="'+(Y(mx-pd)+3).toFixed(1)+'" style="text-anchor:end">'+fmtKg(mx-pd)+'</text><text x="30" y="'+(Y(mn+pd)+3).toFixed(1)+'" style="text-anchor:end">'+fmtKg(mn+pd)+'</text>'+
       (tg?'<line class="goal" x1="34" x2="296" y1="'+Y(tg).toFixed(1)+'" y2="'+Y(tg).toFixed(1)+'"/><text x="296" y="'+(Y(tg)-3).toFixed(1)+'" style="text-anchor:end">target '+fmtKg(tg)+'</text>':'')+
       dots+(ks.length>1?'<polyline class="wl" points="'+trend.join(' ')+'"/>':'')+
@@ -782,6 +817,51 @@ V.focus=function(){
 };
 function fmtT(s){s=Math.max(0,Math.ceil(s));return pad(Math.floor(s/60))+':'+pad(s%60)}
 
+/* ---------- gym helpers ---------- */
+function exList(){return Array.isArray(S.exlist)?S.exlist:[]}
+function exHas(n){var l=n.toLowerCase();return exList().some(function(x){return x.toLowerCase()===l})}
+function exAdd(n){n=n.trim();if(n&&!exHas(n)){S.exlist=exList().concat(n);return true}return false}
+function exOptions(sel){return exList().map(function(x){return '<option'+(x===sel?' selected':'')+'>'+esc(x)+'</option>'}).join('')+'<option value="__custom">Custom…</option>'}
+function histBest(name){var b=0;S.workouts.forEach(function(w){w.entries.forEach(function(e){if(e.name===name)e.sets.forEach(function(x){if(x.w>0)b=Math.max(b,e1rm(x.w,x.r))})})});return b}
+function exHistory(name){
+  var out=[];
+  S.workouts.forEach(function(w,wi){w.entries.forEach(function(e){if(e.name!==name||!e.sets.length)return;
+    var top=0,vol=0,v=0;e.sets.forEach(function(x){top=Math.max(top,x.w);vol+=x.w*x.r;v=Math.max(v,e1rm(x.w,x.r))});
+    out.push({d:w.date,i:wi,sets:e.sets,top:top,vol:vol,v:v,pr:false})})});
+  out.sort(function(a,b){return a.d<b.d?-1:a.d>b.d?1:a.i-b.i});
+  var run=0;out.forEach(function(x,i){if(i>0&&run>0&&x.top>0&&x.v>run)x.pr=true;if(x.top>0)run=Math.max(run,x.v)});
+  return out;
+}
+function sugFor(name,tr){
+  var last=null;for(var i=S.workouts.length-1;i>=0&&!last;i--){var e=S.workouts[i].entries.filter(function(x){return x.name===name&&x.sets.length})[0];if(e)last=e}
+  if(!last)return null;
+  var top=0;last.sets.forEach(function(x){top=Math.max(top,x.w)});
+  var hit=last.sets.filter(function(x){return x.w===top}).every(function(x){return x.r>=tr});
+  if(top<=0)return hit?{text:'You hit '+tr+' reps on every set last time. Try one more rep per set.',w:null}:null;
+  if(hit){var w=top+(top>=20?2.5:1);return {text:'You hit '+tr+' reps at '+top+' kg last time. Try '+w+' kg × '+tr+'.',w:w}}
+  return {text:'Aim for '+tr+' reps at '+top+' kg before adding weight.',w:top};
+}
+function liveEntry(name,nSets,reps){
+  var lp=null;for(var i=S.workouts.length-1;i>=0&&!lp;i--){lp=S.workouts[i].entries.filter(function(x){return x.name===name})[0]}
+  var sets=[];for(var k=0;k<nSets;k++){var q=lp&&lp.sets[k]?lp.sets[k]:null;sets.push({w:q?q.w:'',r:q?q.r:reps,done:false})}
+  return {name:name,tr:reps,sets:sets};
+}
+function restInner(left){return '<span><span class="lab2">Rest</span> <b class="mono" id="restt">'+fmtT(left)+'</b></span><span class="row"><button class="btn ghost sm" data-act="restadj" data-d="-15">−15s</button><button class="btn ghost sm" data-act="restadj" data-d="15">+15s</button><button class="btn sm" data-act="restskip">Skip</button></span>'}
+function restLeft(){return ui.rest.end?(ui.rest.end-Date.now())/1000:0}
+function paintRest(){var b=$('#restbar');if(!b)return;var l=restLeft();if(l>0){b.hidden=false;b.innerHTML=restInner(l)}else{b.hidden=true;b.innerHTML=''}}
+function startRest(){if(!S.live)return;ui.rest.end=Date.now()+clamp(S.restSec||90,10,600)*1000;paintRest()}
+function lineChart(pts,unit,label){
+  var vals=pts.map(function(p){return p.v}),mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals);if(mx-mn<1){mn-=.5;mx+=.5}
+  var pd=(mx-mn)*.12;mn-=pd;mx+=pd;
+  var t0=parse(pts[0].k).getTime(),t1=parse(pts[pts.length-1].k).getTime(),span=(t1-t0)||1;
+  var X=function(k){return pts.length===1?160:34+(parse(k).getTime()-t0)/span*252},Y=function(v){return 102-(v-mn)/(mx-mn)*90};
+  var short=function(k){return parse(k).toLocaleDateString('en-GB',{day:'numeric',month:'short'})};
+  var line=pts.map(function(p){return X(p.k).toFixed(1)+','+Y(p.v).toFixed(1)}).join(' ');
+  var dots=pts.map(function(p){return '<circle class="'+(p.pr?'wp':'wd')+'" cx="'+X(p.k).toFixed(1)+'" cy="'+Y(p.v).toFixed(1)+'" r="'+(p.pr?4:2.6)+'"/>'}).join('');
+  return '<svg class="chart" viewBox="0 0 300 126" style="width:100%;max-width:560px;display:block" role="img" aria-label="'+esc(label)+'"><text x="30" y="'+(Y(mx-pd)+3).toFixed(1)+'" style="text-anchor:end">'+Math.round(mx-pd)+'</text><text x="30" y="'+(Y(mn+pd)+3).toFixed(1)+'" style="text-anchor:end">'+Math.round(mn+pd)+'</text>'+
+   (pts.length>1?'<polyline class="wl" points="'+line+'"/>':'')+dots+'<text x="34" y="122" style="text-anchor:start">'+short(pts[0].k)+'</text>'+(pts.length>1?'<text x="296" y="122" style="text-anchor:end">'+short(pts[pts.length-1].k)+'</text>':'')+'</svg>';
+}
+
 V.prefs=function(){
   return head('Settings &amp; data')+
   '<div class="panel"><h3>Appearance</h3><div class="seg" role="group" aria-label="Theme">'+['light','dark','system'].map(function(t){return '<button data-act="theme" data-t="'+t+'" aria-pressed="'+(S.theme===t)+'">'+t[0].toUpperCase()+t.slice(1)+'</button>'}).join('')+'</div>'+
@@ -805,7 +885,7 @@ function render(){
   if(g){$('#app').innerHTML=loginPage();return}
   $('#app').innerHTML=f();
   renderRail();
-  var sel=$('#exsel');if(sel)sel.dispatchEvent(new Event('change',{bubbles:true}));
+  document.querySelectorAll('select[data-cust]').forEach(function(sel){sel.dispatchEvent(new Event('change',{bubbles:true}))});
   window.scrollTo(0,y);
 }
 function applyTheme(){
@@ -828,16 +908,28 @@ var A={
  rmex:function(el){S.routines[ui.planDay].ex=S.routines[ui.planDay].ex.filter(function(e){return e.id!==el.dataset.id});save();render()},
  startlive:function(){
   var rd=S.routines[ui.planDay];if(!rd.ex.length||S.live)return;
-  S.live={name:rd.name||DOW[ui.planDay],started:Date.now(),entries:rd.ex.map(function(e){var lp=null;for(var i=S.workouts.length-1;i>=0&&!lp;i--){lp=S.workouts[i].entries.filter(function(x){return x.name===e.name})[0]}var sets=[];for(var k=0;k<e.sets;k++){var s=lp&&lp.sets[k]?lp.sets[k]:null;sets.push({w:s?s.w:'',r:s?s.r:e.reps,done:false})}return {name:e.name,sets:sets}})};
+  S.live={name:rd.name||DOW[ui.planDay],started:Date.now(),entries:rd.ex.map(function(e){return liveEntry(e.name,e.sets,e.reps)})};
+  ui.rest.end=0;
   save();render();
  },
+ exmgr:function(){ui.exMgr=!ui.exMgr;render()},
+ exsort:function(){S.exlist=exList().slice().sort(function(a,b){return a.localeCompare(b)});save();render()},
+ exdefaults:function(){var n=0;EXS.forEach(function(x){if(exAdd(x))n++});save();toast(n?n+' default exercise'+(n>1?'s':'')+' added.':'Nothing missing.');render()},
+ exdetail:function(el){ui.exDetail=el.dataset.n;render();window.scrollTo(0,0)},
+ exback:function(){ui.exDetail=null;render();window.scrollTo(0,0)},
+ exmetric:function(el){ui.exMetric=el.dataset.m;render()},
+ restadj:function(el){if(!ui.rest.end)return;ui.rest.end=Math.max(Date.now()+1000,ui.rest.end+(+el.dataset.d)*1000);paintRest()},
+ restskip:function(){ui.rest.end=0;paintRest()},
+ applysug:function(el){var e=S.live.entries[+el.dataset.ei],w=+el.dataset.w;e.sets.forEach(function(x){if(!x.done)x.w=w});save();render()},
  addset:function(el){var e=S.live.entries[+el.dataset.ei];var l=e.sets[e.sets.length-1]||{w:'',r:8};e.sets.push({w:l.w,r:l.r,done:false});save();render()},
- cancellive:function(){if(ui.confirm==='live'){ui.confirm=null;S.live=null;save();render()}else{ui.confirm='live';render()}},
+ cancellive:function(){if(ui.confirm==='live'){ui.confirm=null;S.live=null;ui.rest.end=0;save();render()}else{ui.confirm='live';render()}},
  finish:function(){
   var entries=S.live.entries.map(function(e){return {name:e.name,sets:e.sets.filter(function(s){return (s.done||s.w!=='')&&num(s.r)>0}).map(function(s){return {w:num(s.w),r:num(s.r)}})}}).filter(function(e){return e.sets.length});
   if(!entries.length){toast('Log at least one set first.');return}
-  S.workouts.push({id:uid(),date:today(),name:S.live.name,entries:entries,mins:Math.round((Date.now()-S.live.started)/60000)});
-  S.live=null;save();toast('Workout saved.');render();
+  var prs=0;entries.forEach(function(e){var run=histBest(e.name),base=run;e.sets.forEach(function(x){var v=e1rm(x.w,x.r);if(base>0&&x.w>0&&v>run)prs++;if(x.w>0)run=Math.max(run,v)})});
+  var wo={id:uid(),date:today(),name:S.live.name,entries:entries,mins:Math.round((Date.now()-S.live.started)/60000)};if(prs)wo.prs=prs;
+  S.workouts.push(wo);
+  S.live=null;ui.rest.end=0;save();toast('Workout saved.'+(prs?' '+prs+' new PR'+(prs>1?'s':'')+'!':''));render();
  },
  calday:function(el){var d=+el.dataset.d;ui.calDate=d===0?today():iso(addDays(parse(ui.calDate),d));render()},
  relog:function(el){(S.meals[ui.calDate]=S.meals[ui.calDate]||[]).push({id:uid(),name:el.dataset.n,kcal:+el.dataset.k,p:+el.dataset.p});save();render()},
@@ -886,6 +978,7 @@ var A={
   if(kind==='meal')S.meals[ui.calDate]=mealsOn(ui.calDate).filter(function(x){return x.id!==id});
   if(kind==='book')S.books=S.books.filter(function(x){return x.id!==id});
   if(kind==='note')S.notes=S.notes.filter(function(x){return x.id!==id});
+  if(kind==='exlist')S.exlist=exList().filter(function(x,i){return i!==+id});
   save();render();
  }
 };
@@ -907,8 +1000,15 @@ var F={
  task:function(){var v=$('#tn').value.trim();if(!v)return;S.projects.filter(function(x){return x.id===ui.proj})[0].tasks.push({id:uid(),text:v,done:false});save();render()},
  addex:function(){
   var s=$('#exsel').value,name=s==='__custom'?$('#excustom').value.trim():s;if(!name)return;
+  if(s==='__custom'){var m=exList().filter(function(x){return x.toLowerCase()===name.toLowerCase()})[0];if(m)name=m;else exAdd(name)}
   S.routines[ui.planDay].ex.push({id:uid(),name:name,sets:3,reps:8});save();render();
  },
+ liveex:function(){
+  if(!S.live)return;var s=$('#lexsel').value,name=s==='__custom'?$('#lexcustom').value.trim():s;if(!name)return;
+  if(s==='__custom'){var m=exList().filter(function(x){return x.toLowerCase()===name.toLowerCase()})[0];if(m)name=m;else exAdd(name)}
+  S.live.entries.push(liveEntry(name,3,8));save();render();
+ },
+ exadd:function(){var v=$('#exnew').value.trim();if(!v)return;if(!exAdd(v)){toast('That exercise is already in the list.');return}save();render();var n=$('#exnew');if(n)n.focus()},
  weight:function(){var d=$('#wd').value||today(),v=num($('#wv').value);if(d>today()){toast('That date is in the future.');return}if(v<20||v>400){toast('Enter a weight between 20 and 400 kg.');return}S.weights[d]=Math.round(v*10)/10;save();toast('Weight logged.');render()},
  wtarget:function(){var v=num($('#wt').value);if(v<20||v>400){toast('Enter a weight between 20 and 400 kg.');return}S.wtarget=Math.round(v*10)/10;save();render()},
  review:function(){var k=iso(addDays(mondayOf(new Date()),ui.revOff*7)),o={well:$('#rw').value.trim(),hard:$('#rh').value.trim(),next:$('#rn').value.trim()};if(o.well||o.hard||o.next){o.t=Date.now();S.reviews[k]=o}else delete S.reviews[k];save();toast('Review saved.');render()},
@@ -932,7 +1032,29 @@ var C={
  exreps:function(el){S.routines[ui.planDay].ex.filter(function(e){return e.id===el.dataset.id})[0].reps=clamp(el.value,1,100);save()},
  lw:function(el){S.live.entries[+el.dataset.ei].sets[+el.dataset.si].w=el.value===''?'':num(el.value);save()},
  lr:function(el){S.live.entries[+el.dataset.ei].sets[+el.dataset.si].r=el.value===''?'':num(el.value);save()},
- ld:function(el){S.live.entries[+el.dataset.ei].sets[+el.dataset.si].done=el.checked;save()},
+ ld:function(el){
+  var e=S.live.entries[+el.dataset.ei],s=e.sets[+el.dataset.si];s.done=el.checked;
+  if(s.done){
+    var w=num(s.w),r=num(s.r),v=e1rm(w,r),hb=histBest(e.name),sb=0;
+    e.sets.forEach(function(x){if(x!==s&&x.done&&num(x.w)>0&&num(x.r)>0)sb=Math.max(sb,e1rm(num(x.w),num(x.r)))});
+    s.pr=!!(hb>0&&w>0&&r>0&&v>hb&&v>sb);
+    if(s.pr)toast('New PR: '+e.name+' '+w+' kg × '+r);
+    startRest();
+  }else{s.pr=false}
+  save();render();
+ },
+ restsec:function(el){S.restSec=clamp(el.value,10,600);el.value=S.restSec;save()},
+ exren:function(el){
+  var i=+el.dataset.i,old=exList()[i],nn=el.value.trim();
+  if(!nn||nn===old){render();return}
+  if(exList().some(function(x,j){return j!==i&&x.toLowerCase()===nn.toLowerCase()})){toast('That name is already in the list.');render();return}
+  S.exlist=exList().slice();S.exlist[i]=nn;
+  Object.keys(S.routines).forEach(function(d){S.routines[d].ex.forEach(function(x){if(x.name===old)x.name=nn})});
+  S.workouts.forEach(function(w){w.entries.forEach(function(x){if(x.name===old)x.name=nn})});
+  if(S.live)S.live.entries.forEach(function(x){if(x.name===old)x.name=nn});
+  if(ui.exDetail===old)ui.exDetail=nn;
+  save();toast('Renamed everywhere.');render();
+ },
  rev:function(el){var k=iso(addDays(mondayOf(new Date()),ui.revOff*7)),o=S.reviews[k]=S.reviews[k]||{};o[el.dataset.f]=el.value.trim();o.t=Date.now();save()},
  bookpg:function(el){var b=S.books.filter(function(x){return x.id===el.dataset.id})[0];b.cur=Math.max(0,Math.min(b.pages,Math.round(num(el.value))));save();render()}
 };
@@ -996,6 +1118,13 @@ setInterval(function(){
     else paintTimer();
   }
 },250);
+setInterval(function(){
+  if(!ui.rest.end)return;
+  if(!S.live){ui.rest.end=0;paintRest();return}
+  var l=restLeft();
+  if(l<=0){ui.rest.end=0;paintRest();beep(1);try{if(navigator.vibrate)navigator.vibrate([200,100,200])}catch(e){}toast('Rest over. Next set.')}
+  else{var t=$('#restt');if(t)t.textContent=fmtT(l)}
+},250);
 function tick(){var d=new Date();var e=$('#clock');if(e)e.textContent=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())}
 tick();setInterval(tick,1000);
 
@@ -1010,14 +1139,14 @@ document.addEventListener('submit',function(e){
 });
 document.addEventListener('change',function(e){
   var el=e.target;
-  if(el.id==='exsel'){var c=$('#excustom');if(c)c.hidden=el.value!=='__custom';if(c&&!c.hidden)c.focus();return}
+  if(el.dataset&&el.dataset.cust){var c=$('#'+el.dataset.cust);if(c)c.hidden=el.value!=='__custom';if(c&&!c.hidden)c.focus();return}
   if(el.dataset&&el.dataset.chg&&el.dataset.chg!=='nsearch'){var fn=C[el.dataset.chg];if(fn)fn(el)}
 });
 document.addEventListener('input',function(e){
   var el=e.target;
   if(el.dataset&&el.dataset.chg==='nsearch'){ui.noteQ=el.value;var pos=el.selectionStart;render();var n=$('#ns');if(n){n.focus();n.setSelectionRange(pos,pos)}}
 });
-function setView(v){if(!V[v])v='home';ui.view=v;ui.confirm=null;render();window.scrollTo(0,0)}
+function setView(v){if(!V[v])v='home';if(v!=='gym-stats')ui.exDetail=null;ui.view=v;ui.confirm=null;render();window.scrollTo(0,0)}
 window.addEventListener('hashchange',function(){setView(location.hash.replace('#','')||'home')});
 
 /* ---------- boot ---------- */
