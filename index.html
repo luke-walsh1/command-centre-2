@@ -149,6 +149,7 @@ table.hab{border-collapse:collapse;width:100%;min-width:560px}
 .spark{width:100%;height:56px;display:block}
 .spark polyline{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 .spark circle{fill:var(--accent)}
+.wl{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}.wd{fill:var(--muted);opacity:.75}
 .up{color:var(--good)}.down{color:var(--bad)}
 /* calories */
 .ringbox{display:flex;flex-wrap:wrap;gap:20px;align-items:center}
@@ -407,11 +408,13 @@ var ICONS={
  books:'<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5zM4 19a2 2 0 0 0 2 2h13"/>',
  notes:'<path d="M5 3h10l4 4v14H5zM14 3v5h5M8 13h8M8 17h6"/>',
  focus:'<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/>',
+ body:'<path d="M5 5h14l2 15H3z"/><path d="M9 10a3 3 0 0 1 6 0"/>',
+ review:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 13l2 2 4-4"/>',
  minus:'<path d="M5 12h14"/>',plus:'<path d="M12 5v14M5 12h14"/>',play:'<path d="M8 5l11 7-11 7z"/>',pause:'<path d="M9 5v14M15 5v14"/>',reset:'<path d="M4 12a8 8 0 1 0 3-6.2M4 4v4h4"/>',
  prefs:'<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>'
 };
 var ic=function(n){return '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">'+ICONS[n]+'</svg>'};
-var MODS=[['home','Home'],['habits','Habits'],['calendar','Calendar'],['projects','Projects'],['gym-plan','Gym Plan'],['gym-stats','Gym Stats'],['calories','Calories'],['books','Books'],['notes','Notes'],['focus','Focus'],['prefs','Settings']];
+var MODS=[['home','Home'],['habits','Habits'],['calendar','Calendar'],['projects','Projects'],['gym-plan','Gym Plan'],['gym-stats','Gym Stats'],['calories','Calories'],['body','Weight'],['books','Books'],['notes','Notes'],['focus','Focus'],['review','Review'],['prefs','Settings']];
 
 var QUOTES=['Do the next small thing well.','Consistency beats intensity.','Protect the first hour.','One clear priority is enough.','Make it easy to start.','Finish what is already open.','Sleep is training too.','Show up, then adjust.','Slow is smooth, smooth is fast.','Write it down, then let it go.','Progress is quiet and cumulative.','Remove one obstacle today.','Ship the draft.','Rest is part of the plan.'];
 var EXS=['Barbell Bench Press','Incline Dumbbell Press','Barbell Back Squat','Conventional Deadlift','Overhead Press','Lat Pulldown','Machine Barbell Row','Dumbbell Bicep Curl','Tricep Cable Pushdown','Leg Press','Romanian Deadlift','Pull-up','Lateral Raise','Walking Lunge'];
@@ -424,11 +427,11 @@ function defaults(){
     habits:[{id:uid(),name:'Drink 3L water',days:{}},{id:uid(),name:'Read 20 minutes',days:{}},{id:uid(),name:'Train or walk',days:{}},{id:uid(),name:'In bed before 23:00',days:{}}],
     events:[],projects:[],routines:r,workouts:[],live:null,
     goal:3300,meals:{},books:[],notes:[],
-    focusCfg:{focus:25,short:5,long:15},sessions:{},todayFocus:{},miniMin:5};
+    focusCfg:{focus:25,short:5,long:15},sessions:{},todayFocus:{},miniMin:5,weights:{},wtarget:0,reviews:{}};
 }
 var S=defaults();
 function normalise(o){var d=defaults();for(var k in d){if(o[k]===undefined)o[k]=d[k]}for(var i=0;i<7;i++){if(!o.routines[i])o.routines[i]={name:'',ex:[]}}return o}
-var ui={view:'home',weekOff:0,cal:{y:new Date().getFullYear(),m:new Date().getMonth()},sel:iso(new Date()),proj:null,planDay:(new Date().getDay()+6)%7,calDate:iso(new Date()),editNote:null,noteQ:'',editH:false,confirm:null,sync:'Local only',importOpen:false,exportText:'',
+var ui={view:'home',weekOff:0,cal:{y:new Date().getFullYear(),m:new Date().getMonth()},sel:iso(new Date()),proj:null,planDay:(new Date().getDay()+6)%7,calDate:iso(new Date()),editNote:null,noteQ:'',revOff:0,wRange:90,wDate:iso(new Date()),editH:false,confirm:null,sync:'Local only',importOpen:false,exportText:'',
   t:{mode:'focus',remaining:25*60,end:0,running:false}};
 /* ===== DATA ADAPTER BOUNDARY =====
    The UI never talks to a backend. It only calls window.CCData (see README.md):
@@ -491,10 +494,39 @@ window.CC={
 /* ---------- helpers ---------- */
 function toast(m){var t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){t.hidden=true},2200)}
 function asked(key){if(ui.confirm===key){ui.confirm=null;return true}ui.confirm=key;render();return false}
-function delBtn(kind,id,extra){var k=kind+':'+id+(extra||'');var on=ui.confirm===k;return '<button class="btn sm '+(on?'danger':'ghost')+'" data-act="del" data-kind="'+kind+'" data-id="'+esc(id)+'" data-x="'+esc(extra||'')+'">'+(on?'Confirm delete':'Delete')+'</button>'}
+function delBtn(kind,id,extra,label,yes){var k=kind+':'+id+(extra||'');var on=ui.confirm===k;return '<button class="btn sm '+(on?'danger':'ghost')+'" data-act="del" data-kind="'+kind+'" data-id="'+esc(id)+'" data-x="'+esc(extra||'')+'">'+(on?(yes||'Confirm delete'):(label||'Delete'))+'</button>'}
 function head(t,sub,right){return '<div class="head"><div><h2>'+t+'</h2>'+(sub?'<p>'+sub+'</p>':'')+'</div>'+(right?'<div class="row">'+right+'</div>':'')+'</div>'}
 function bar(p,over){return '<div class="bar'+(over?' over':'')+'"><i style="width:'+Math.max(0,Math.min(100,p))+'%"></i></div>'}
 var today=function(){return iso(new Date())};
+
+/* recurring events: e.date is the first day, e.rec is daily|weekly|monthly|yearly, e.skip lists removed days */
+var RECS=[['','Does not repeat'],['daily','Every day'],['weekly','Every week'],['monthly','Every month'],['yearly','Every year']];
+function recLabel(r){var x=RECS.filter(function(y){return y[0]===r})[0];return x&&r?x[1].toLowerCase():''}
+function dimOf(y,m){return new Date(y,m+1,0).getDate()}
+function occursOn(e,k){
+  if(k<e.date)return false;
+  if(k===e.date)return !(e.skip&&e.skip.indexOf(k)>-1);
+  if(!e.rec)return false;
+  if(e.skip&&e.skip.indexOf(k)>-1)return false;
+  var a=parse(e.date),b=parse(k);
+  if(e.rec==='daily')return true;
+  if(e.rec==='weekly')return Math.round((b-a)/864e5)%7===0;
+  if(e.rec==='monthly')return b.getDate()===Math.min(a.getDate(),dimOf(b.getFullYear(),b.getMonth()));
+  if(e.rec==='yearly')return b.getMonth()===a.getMonth()&&b.getDate()===Math.min(a.getDate(),dimOf(b.getFullYear(),b.getMonth()));
+  return false;
+}
+function eventsOn(k){return S.events.filter(function(e){return occursOn(e,k)}).sort(function(a,b){return (a.time||'').localeCompare(b.time||'')})}
+function nextEvent(){
+  var d=new Date();
+  for(var i=0;i<=400;i++){var k=iso(addDays(d,i)),l=eventsOn(k);if(l.length){var e=l[0],ev={id:e.id,title:e.title,time:e.time,date:k};return ev}}
+  return null;
+}
+
+/* bodyweight */
+function wKeys(){return Object.keys(S.weights).sort()}
+function wLatest(){var k=wKeys();return k.length?{d:k[k.length-1],v:S.weights[k[k.length-1]]}:null}
+function wOnOrBefore(d){var k=wKeys().filter(function(x){return x<=d});return k.length?{d:k[k.length-1],v:S.weights[k[k.length-1]]}:null}
+function fmtKg(v){return (Math.round(v*10)/10).toFixed(1)}
 
 function habitStreak(h){var d=new Date();if(!h.days[iso(d)])d=addDays(d,-1);var n=0;while(h.days[iso(d)]){n++;d=addDays(d,-1)}return n}
 function mealsOn(d){return S.meals[d]||[]}
@@ -512,7 +544,7 @@ V.home=function(){
   var td=today(),doy=Math.floor((n-new Date(n.getFullYear(),0,0))/864e5);
   var hd=S.habits.filter(function(x){return x.days[td]}).length,ht=S.habits.length;
   var kc=kcalOn(td),rem=S.goal-kc;
-  var ev=S.events.filter(function(e){return e.date>=td}).sort(function(a,b){return (a.date+a.time).localeCompare(b.date+b.time)})[0];
+  var ev=nextEvent();
   var act=S.projects.filter(function(p){return p.tasks.length===0||projPct(p)<100});
   var avg=S.projects.length?Math.round(S.projects.reduce(function(a,p){return a+projPct(p)},0)/S.projects.length):0;
   var rt=S.routines[(n.getDay()+6)%7];
@@ -520,8 +552,10 @@ V.home=function(){
   var reading=S.books.filter(function(b){return b.cur<b.pages}).length;
   var ses=S.sessions[td]||0;
   var tile=function(v,ico,lab,big,sub,extra){return '<button class="tile" data-act="nav" data-v="'+v+'"><span class="lab">'+ic(ico)+lab+'</span><span class="big">'+big+'</span><span class="sub">'+sub+'</span>'+(extra||'')+'</button>'};
+  var dow=n.getDay(),revOff=dow===0?0:dow===1?-1:null,revKey=revOff==null?null:iso(addDays(mondayOf(n),revOff*7));
+  var revPrompt=revKey&&!(S.reviews[revKey]&&(S.reviews[revKey].well||S.reviews[revKey].hard||S.reviews[revKey].next))?'<div class="panel"><div class="row" style="justify-content:space-between"><span>'+(revOff===0?'It is Sunday. Time to review your week.':'New week. Look back at last week before you plan this one.')+'</span><button class="btn sm" data-act="openrev" data-off="'+revOff+'">Open weekly review</button></div></div>':'';
   return '<div class="head"><div><h2>'+greet+'</h2><p>'+n.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'</p></div></div>'+
-  (needsSetup()?'<div class="panel"><div class="row" style="justify-content:space-between"><span class="muted">Cloud sync is off. Connect Supabase to sync devices.</span><button class="btn ghost sm" data-act="nav" data-v="prefs">Set up</button></div></div>':authNeeded()?authPanel():'')+'<div class="panel focusline"><span class="lab2">Today’s focus</span><form data-form="focus" class="form"><input id="fi" type="text" maxlength="120" value="'+esc(S.todayFocus[td]||'')+'" placeholder="What is the one thing today?" aria-label="Today’s focus"><button class="btn" type="submit">Set</button></form><span class="q">'+QUOTES[doy%QUOTES.length]+'</span></div>'+
+  (needsSetup()?'<div class="panel"><div class="row" style="justify-content:space-between"><span class="muted">Cloud sync is off. Connect Supabase to sync devices.</span><button class="btn ghost sm" data-act="nav" data-v="prefs">Set up</button></div></div>':authNeeded()?authPanel():'')+revPrompt+'<div class="panel focusline"><span class="lab2">Today’s focus</span><form data-form="focus" class="form"><input id="fi" type="text" maxlength="120" value="'+esc(S.todayFocus[td]||'')+'" placeholder="What is the one thing today?" aria-label="Today’s focus"><button class="btn" type="submit">Set</button></form><span class="q">'+QUOTES[doy%QUOTES.length]+'</span></div>'+
   '<div class="grid">'+
    tile('habits','habits','Habits today',hd+'/'+ht,ht?(hd===ht?'All done. Nice.':(ht-hd)+' to go'):'No habits yet',bar(ht?hd/ht*100:0))+
    tile('calories','calories','Calories left',fmtN(Math.max(rem,0)),fmtN(kc)+' of '+fmtN(S.goal)+' kcal eaten',bar(kc/S.goal*100,kc>S.goal))+
@@ -529,6 +563,8 @@ V.home=function(){
    tile('projects','projects','Projects',act.length,S.projects.length?avg+'% average completion':'Create your first project',bar(avg))+
    tile('gym-plan','gym-plan','Training',rt.name?esc(rt.name):'Rest',(rt.ex.length?rt.ex.length+' exercises planned':'No routine set')+' · '+wk+' session'+(wk===1?'':'s')+' this week')+
    tile('focus','focus','Focus sessions',ses,ses===1?'completed today':'completed today')+
+   (function(){var l=wLatest(),w7=l&&wOnOrBefore(iso(addDays(new Date(),-7))),df=l&&w7&&w7.d!==l.d?l.v-w7.v:null;
+     return tile('body','body','Weight',l?fmtKg(l.v)+'<span style="font-size:18px"> kg</span>':'None',l?(df==null?'Logged '+parse(l.d).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):(df>0?'+':'')+fmtKg(df)+' kg vs last week'):'Log your first weigh-in')})()+
    tile('books','books','Reading',reading,reading?'book'+(reading===1?'':'s')+' in progress':'Add a book')+
    tile('notes','notes','Notes',S.notes.length,S.notes.filter(function(x){return x.pin}).length+' pinned')+
   '</div>';
@@ -555,14 +591,14 @@ V.calendar=function(){
   var y=ui.cal.y,m=ui.cal.m,first=new Date(y,m,1),lead=(first.getDay()+6)%7,dim=new Date(y,m+1,0).getDate(),td=today();
   var cells='';DOW.forEach(function(d){cells+='<div class="dow">'+d+'</div>'});
   var start=addDays(first,-lead),total=Math.ceil((lead+dim)/7)*7;
-  for(var i=0;i<total;i++){var d=addDays(start,i),k=iso(d),n=S.events.filter(function(e){return e.date===k}).length,hasW=S.workouts.some(function(w){return w.date===k});
+  for(var i=0;i<total;i++){var d=addDays(start,i),k=iso(d),n=eventsOn(k).length,hasW=S.workouts.some(function(w){return w.date===k});
     cells+='<button class="'+(d.getMonth()!==m?'out ':'')+(k===td?'today ':'')+(k===ui.sel?'sel':'')+'" data-act="selday" data-d="'+k+'" aria-label="'+k+(n?', '+n+' events':'')+'"><span>'+d.getDate()+'</span><span class="pips">'+(n?'<i></i>':'')+(n>1?'<i></i>':'')+(hasW?'<i style="border-radius:1px"></i>':'')+'</span></button>'}
-  var evs=S.events.filter(function(e){return e.date===ui.sel}).sort(function(a,b){return (a.time||'').localeCompare(b.time||'')});
+  var evs=eventsOn(ui.sel);
   return head('Calendar &amp; events',MONTHS[m]+' '+y,'<button class="btn ghost sm" data-act="cal" data-d="-1">‹</button><button class="btn ghost sm" data-act="cal" data-d="0">Today</button><button class="btn ghost sm" data-act="cal" data-d="1">›</button>')+
-  '<div class="split"><div class="panel"><div class="cal">'+cells+'</div><p class="muted" style="margin:10px 0 0;font-size:12px">Round dot: event. Square dot: workout logged.</p></div>'+
+  '<div class="split"><div class="panel"><div class="cal">'+cells+'</div><p class="muted" style="margin:10px 0 0;font-size:12px">Round dot: event (repeats included). Square dot: workout logged.</p></div>'+
   '<div class="panel"><h3>'+parse(ui.sel).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})+'</h3>'+
-  (evs.length?'<ul class="list">'+evs.map(function(e){return '<li><span class="mono muted">'+esc(e.time||'--:--')+'</span><span class="grow">'+esc(e.title)+'</span>'+delBtn('event',e.id)+'</li>'}).join('')+'</ul>':'<div class="empty">No events on this day.</div>')+
-  '<form data-form="event" class="form" style="margin-top:14px"><input id="et" type="time" aria-label="Time"><input id="ex" type="text" maxlength="80" placeholder="Event title" required aria-label="Event title"><button class="btn" type="submit">Add</button></form></div></div>';
+  (evs.length?'<ul class="list">'+evs.map(function(e){return '<li><span class="mono muted">'+esc(e.time||'--:--')+'</span><span class="grow">'+esc(e.title)+(e.rec?' <span class="hint">↻ '+recLabel(e.rec)+'</span>':'')+'</span>'+(e.rec?delBtn('skip',e.id,ui.sel,'Skip day','Confirm skip')+delBtn('event',e.id,'','Delete all','Confirm delete all'):delBtn('event',e.id))+'</li>'}).join('')+'</ul>':'<div class="empty">No events on this day.</div>')+
+  '<form data-form="event" class="form" style="margin-top:14px"><input id="et" type="time" aria-label="Time"><input id="ex" type="text" maxlength="80" placeholder="Event title" required aria-label="Event title"><select id="er" aria-label="Repeat">'+RECS.map(function(r){return '<option value="'+r[0]+'">'+r[1]+'</option>'}).join('')+'</select><button class="btn" type="submit">Add</button></form></div></div>';
 };
 
 V.projects=function(){
@@ -636,6 +672,87 @@ V.calories=function(){
   '<div class="panel"><h3>Meals</h3>'+(ms.length?'<ul class="list">'+ms.map(function(m){return '<li><span class="grow">'+esc(m.name)+(m.p?' <span class="hint">'+m.p+' g protein</span>':'')+'</span><span class="mono">'+fmtN(m.kcal)+'</span>'+delBtn('meal',m.id)+'</li>'}).join('')+'</ul>':'<div class="empty">Nothing logged for this day.</div>')+
   '<form data-form="meal" class="form" style="margin-top:14px"><input id="mn" type="text" maxlength="60" placeholder="Meal" required aria-label="Meal name"><input id="mk" type="number" min="0" max="10000" placeholder="kcal" required aria-label="Calories"><input id="mp" type="number" min="0" max="500" placeholder="protein g" aria-label="Protein"><button class="btn" type="submit">Log</button></form>'+
   (recent.length?'<div class="lab2" style="margin:14px 0 6px">Log again</div><div class="chips">'+recent.map(function(m){return '<button class="chip" data-act="relog" data-n="'+esc(m.name)+'" data-k="'+m.kcal+'" data-p="'+(m.p||0)+'">'+esc(m.name)+' · '+m.kcal+'</button>'}).join('')+'</div>':'')+'</div></div>';
+};
+
+V.body=function(){
+  var keys=wKeys(),l=wLatest(),td=today(),tg=S.wtarget||0;
+  var from=ui.wRange?iso(addDays(new Date(),-ui.wRange)):'';
+  var ks=keys.filter(function(k){return !from||k>=from});
+  var chg=function(days){if(!l)return null;var b=wOnOrBefore(iso(addDays(parse(l.d),-days)));return b&&b.d!==l.d?l.v-b.v:null};
+  var sg=function(v){return v==null?'–':(v>0?'+':'')+fmtKg(v)+' kg'};
+  var chart='';
+  if(ks.length){
+    var vals=ks.map(function(k){return S.weights[k]});if(tg)vals.push(tg);
+    var mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals);if(mx-mn<1){mn-=.5;mx+=.5}
+    var pd=(mx-mn)*.12;mn-=pd;mx+=pd;
+    var t0=parse(ks[0]).getTime(),t1=parse(ks[ks.length-1]).getTime(),span=(t1-t0)||1;
+    var X=function(k){return ks.length===1?160:34+(parse(k).getTime()-t0)/span*252},Y=function(v){return 102-(v-mn)/(mx-mn)*90};
+    var trend=ks.map(function(k){var lo=iso(addDays(parse(k),-6)),a=wKeys().filter(function(x){return x>=lo&&x<=k}).map(function(x){return S.weights[x]});
+      return X(k).toFixed(1)+','+Y(a.reduce(function(p,q){return p+q},0)/a.length).toFixed(1)});
+    var dots=ks.map(function(k){return '<circle class="wd" cx="'+X(k).toFixed(1)+'" cy="'+Y(S.weights[k]).toFixed(1)+'" r="2.6"/>'}).join('');
+    var short=function(k){return parse(k).toLocaleDateString('en-GB',{day:'numeric',month:'short'})};
+    chart='<svg class="chart" viewBox="0 0 300 126" style="width:100%" role="img" aria-label="Bodyweight over time">'+
+      '<text x="30" y="'+(Y(mx-pd)+3).toFixed(1)+'" style="text-anchor:end">'+fmtKg(mx-pd)+'</text><text x="30" y="'+(Y(mn+pd)+3).toFixed(1)+'" style="text-anchor:end">'+fmtKg(mn+pd)+'</text>'+
+      (tg?'<line class="goal" x1="34" x2="296" y1="'+Y(tg).toFixed(1)+'" y2="'+Y(tg).toFixed(1)+'"/><text x="296" y="'+(Y(tg)-3).toFixed(1)+'" style="text-anchor:end">target '+fmtKg(tg)+'</text>':'')+
+      dots+(ks.length>1?'<polyline class="wl" points="'+trend.join(' ')+'"/>':'')+
+      '<text x="34" y="122" style="text-anchor:start">'+short(ks[0])+'</text>'+(ks.length>1?'<text x="296" y="122" style="text-anchor:end">'+short(ks[ks.length-1])+'</text>':'')+'</svg><div class="hint">Dots are weigh-ins. The line is a 7-day average'+(tg?'; dashed line is your target':'')+'.</div>';
+  }
+  var rng=[[30,'30 days'],[90,'90 days'],[365,'1 year'],[0,'All']].map(function(r){return '<button class="btn sm'+(ui.wRange===r[0]?'':' ghost')+'" data-act="wrange" data-r="'+r[0]+'" aria-pressed="'+(ui.wRange===r[0])+'">'+r[1]+'</button>'}).join('');
+  var rows=keys.slice(-14).reverse().map(function(k,i,arr){var all=keys,ix=all.indexOf(k),pv=ix>0?S.weights[all[ix-1]]:null,df=pv==null?null:S.weights[k]-pv;
+    return '<li><span class="mono muted">'+k+'</span><span class="grow mono"><b>'+fmtKg(S.weights[k])+'</b> kg</span><span class="hint">'+(df==null?'':(df>0?'+':'')+fmtKg(df))+'</span>'+delBtn('weight',k)+'</li>'}).join('');
+  var gap=l&&tg?l.v-tg:null;
+  return head('Bodyweight',l?'Latest '+fmtKg(l.v)+' kg on '+parse(l.d).toLocaleDateString('en-GB',{day:'numeric',month:'long'}):'Log your first weigh-in below',rng)+
+  '<div class="grid">'+
+   '<div class="tile" style="cursor:default"><span class="lab">Current</span><span class="big">'+(l?fmtKg(l.v)+'<span style="font-size:18px"> kg</span>':'–')+'</span></div>'+
+   '<div class="tile" style="cursor:default"><span class="lab">Last 7 days</span><span class="big" style="font-size:30px">'+sg(chg(7))+'</span></div>'+
+   '<div class="tile" style="cursor:default"><span class="lab">Last 30 days</span><span class="big" style="font-size:30px">'+sg(chg(30))+'</span></div>'+
+   '<div class="tile" style="cursor:default"><span class="lab">Target</span><span class="big" style="font-size:30px">'+(tg?fmtKg(tg)+' kg':'Not set')+'</span>'+(gap!=null?'<span class="sub">'+fmtKg(Math.abs(gap))+' kg '+(gap>0?'above':'below')+' target</span>':'')+'</div>'+
+  '</div>'+
+  '<div class="split"><div class="panel">'+(chart||'<div class="empty">No weigh-ins in this range.</div>')+'</div>'+
+  '<div class="panel"><h3>Log weight</h3><form data-form="weight" class="form"><input id="wd" type="date" value="'+td+'" max="'+td+'" required aria-label="Date"><input id="wv" type="number" min="20" max="400" step="0.1" placeholder="kg" required aria-label="Weight in kilograms"><button class="btn" type="submit">Log</button></form>'+
+  '<p class="hint" style="margin:8px 0 0">Logging a date that already has a weight replaces it.</p>'+
+  '<div class="lab2" style="margin:16px 0 6px">Target weight</div><form data-form="wtarget" class="form"><input id="wt" type="number" min="20" max="400" step="0.1" placeholder="kg" value="'+(tg||'')+'" required aria-label="Target weight in kilograms"><button class="btn ghost" type="submit">Set target</button>'+(tg?'<button class="btn ghost" type="button" data-act="wclear">Clear</button>':'')+'</form></div></div>'+
+  (rows?'<div class="panel"><h3>Recent weigh-ins</h3><ul class="list">'+rows+'</ul></div>':'');
+};
+
+function weekStats(ws){
+  var td=today(),dates=[],el=[],i;
+  for(i=0;i<7;i++){var k=iso(addDays(ws,i));dates.push(k);if(k<=td)el.push(k)}
+  var hDone=0,per=S.habits.map(function(h){var c=el.filter(function(k){return h.days[k]}).length;hDone+=c;return {n:h.name,c:c}});
+  var hTot=S.habits.length*el.length;
+  var wk=S.workouts.filter(function(w){return dates.indexOf(w.date)>-1}),vol=0,sets=0;
+  wk.forEach(function(w){w.entries.forEach(function(e){e.sets.forEach(function(s){sets++;vol+=s.w*s.r})})});
+  var logged=el.filter(function(k){return kcalOn(k)>0}),kc=logged.reduce(function(a,k){return a+kcalOn(k)},0);
+  var foc=dates.reduce(function(a,k){return a+(S.sessions[k]||0)},0);
+  var evn=dates.reduce(function(a,k){return a+eventsOn(k).length},0);
+  var inW=wKeys().filter(function(k){return dates.indexOf(k)>-1}),wc=null,wnow=null;
+  if(inW.length){wnow=S.weights[inW[inW.length-1]];var b=wOnOrBefore(iso(addDays(ws,-1)));wc=b?wnow-b.v:(inW.length>1?wnow-S.weights[inW[0]]:null)}
+  return {dates:dates,el:el.length,hDone:hDone,hTot:hTot,hPct:hTot?Math.round(hDone/hTot*100):null,per:per,wk:wk.length,sets:sets,vol:vol,logged:logged.length,avgKc:logged.length?Math.round(kc/logged.length):null,foc:foc,evn:evn,wnow:wnow,wc:wc};
+}
+V.review=function(){
+  var ws=addDays(mondayOf(new Date()),ui.revOff*7),key=iso(ws),r=S.reviews[key]||{};
+  var st=weekStats(ws),pv=weekStats(addDays(ws,-7)),prevKey=iso(addDays(ws,-7)),pr=S.reviews[prevKey];
+  var label=ws.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' – '+addDays(ws,6).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  var vs=function(a,b,unit,fmt){if(a==null||b==null)return '';var d=a-b;if(!d)return 'same as last week';return (d>0?'+':'−')+(fmt?fmt(Math.abs(d)):Math.abs(d))+(unit||'')+' vs last week'};
+  var tile=function(lab,ico,big,sub,cmp){return '<div class="tile" style="cursor:default"><span class="lab">'+ic(ico)+lab+'</span><span class="big">'+big+'</span><span class="sub">'+sub+'</span>'+(cmp?'<span class="hint">'+cmp+'</span>':'')+'</div>'};
+  var best=st.per.slice().sort(function(a,b){return b.c-a.c})[0];
+  var habits=st.per.length?'<div class="panel"><h3>Habit breakdown</h3><ul class="list">'+st.per.map(function(h){var p=st.el?Math.round(h.c/st.el*100):0;return '<li><span class="grow">'+esc(h.n)+'</span><span style="width:90px">'+bar(p)+'</span><span class="mono" style="width:44px;text-align:right">'+h.c+'/'+st.el+'</span></li>'}).join('')+'</ul></div>':'';
+  var cur=ui.revOff===0;
+  return head('Weekly review',label+(cur&&st.el<7?' · '+st.el+' of 7 days so far':''),'<button class="btn ghost sm" data-act="rev" data-d="-1">‹ Prev</button><button class="btn ghost sm" data-act="rev" data-d="0">This week</button><button class="btn ghost sm" data-act="rev" data-d="1"'+(ui.revOff>=0?' disabled':'')+'>Next ›</button>')+
+  '<div class="grid">'+
+   tile('Habits','habits',st.hPct==null?'–':st.hPct+'%',st.hTot?st.hDone+' of '+st.hTot+' check-ins'+(best&&best.c?' · best: '+esc(best.n):''):'No habits yet',vs(st.hPct,pv.hPct,' pts'))+
+   tile('Training','gym-plan',st.wk,st.wk?fmtN(st.vol)+' kg volume · '+st.sets+' sets':'No sessions logged',vs(st.wk,pv.wk,'',null))+
+   tile('Calories','calories',st.avgKc==null?'–':fmtN(st.avgKc),st.avgKc==null?'Nothing logged':'avg kcal over '+st.logged+' logged day'+(st.logged===1?'':'s')+' · goal '+fmtN(S.goal),'')+
+   tile('Weight','body',st.wnow==null?'–':fmtKg(st.wnow)+'<span style="font-size:18px"> kg</span>',st.wc==null?(st.wnow==null?'No weigh-ins':'One weigh-in'):(st.wc>0?'+':'')+fmtKg(st.wc)+' kg this week','')+
+   tile('Focus sessions','focus',st.foc,st.foc?'completed':'None this week',vs(st.foc,pv.foc,'',null))+
+   tile('Events','calendar',st.evn,st.evn===1?'on the calendar':'on the calendar','')+
+  '</div>'+habits+
+  (pr&&pr.next?'<div class="panel"><div class="lab2" style="margin-bottom:6px">You planned for this week</div><div style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(pr.next)+'</div></div>':'')+
+  '<div class="panel"><h3>Reflect</h3><form data-form="review">'+
+   '<label class="lab2" for="rw">What went well</label><textarea id="rw" data-chg="rev" data-f="well" style="min-height:70px;margin:6px 0 12px" placeholder="Wins, progress, things to repeat">'+esc(r.well||'')+'</textarea>'+
+   '<label class="lab2" for="rh">What got in the way</label><textarea id="rh" data-chg="rev" data-f="hard" style="min-height:70px;margin:6px 0 12px" placeholder="Obstacles, missed habits, what to change">'+esc(r.hard||'')+'</textarea>'+
+   '<label class="lab2" for="rn">Focus for next week</label><textarea id="rn" data-chg="rev" data-f="next" style="min-height:70px;margin:6px 0 12px" placeholder="One to three priorities">'+esc(r.next||'')+'</textarea>'+
+   '<div class="row"><button class="btn" type="submit">Save review</button>'+(r.t?'<span class="hint">Saved '+new Date(r.t).toLocaleDateString('en-GB',{day:'numeric',month:'short'})+'</span>':'')+'</div></form></div>';
 };
 
 V.books=function(){
@@ -752,11 +869,17 @@ var A={
   }catch(e){toast('That file is not a valid backup.')}
  },
  reset:function(){if(ui.confirm==='reset'){ui.confirm=null;S=defaults();ui.proj=null;applyTheme();save();toast('Everything was reset.');render()}else{ui.confirm='reset';render()}},
+ openrev:function(el){ui.revOff=+el.dataset.off||0;if(location.hash==='#review')render();else location.hash='review'},
+ rev:function(el){var d=+el.dataset.d;ui.revOff=d===0?0:Math.min(0,ui.revOff+d);render()},
+ wrange:function(el){ui.wRange=+el.dataset.r;render()},
+ wclear:function(){S.wtarget=0;save();render()},
  del:function(el){
   var kind=el.dataset.kind,id=el.dataset.id,key=kind+':'+id+(el.dataset.x||'');
   if(!asked(key))return;
   if(kind==='habit')S.habits=S.habits.filter(function(x){return x.id!==id});
   if(kind==='event')S.events=S.events.filter(function(x){return x.id!==id});
+  if(kind==='skip'){var ev=S.events.filter(function(x){return x.id===id})[0];if(ev)ev.skip=(ev.skip||[]).concat(el.dataset.x)}
+  if(kind==='weight')delete S.weights[id];
   if(kind==='project'){S.projects=S.projects.filter(function(x){return x.id!==id});ui.proj=null}
   if(kind==='task'){var p=S.projects.filter(function(x){return x.id===ui.proj})[0];p.tasks=p.tasks.filter(function(x){return x.id!==id})}
   if(kind==='workout')S.workouts=S.workouts.filter(function(x){return x.id!==id});
@@ -779,13 +902,16 @@ var F={
  setup:function(){var u=$('#su').value.trim(),k=$('#sk').value.trim();var p;try{p=new URL(u);if(p.protocol!=='https:')throw 0}catch(e){toast('Enter the full https:// project URL.');return}D.saveConfig(p.origin,k);location.reload()},
  focus:function(f){var v=$('#fi').value.trim();if(v)S.todayFocus[today()]=v;else delete S.todayFocus[today()];save();toast('Focus saved.')},
  habit:function(){var v=$('#hn').value.trim();if(!v)return;S.habits.push({id:uid(),name:v,days:{}});save();render()},
- event:function(){var v=$('#ex').value.trim();if(!v)return;S.events.push({id:uid(),date:ui.sel,time:$('#et').value,title:v});save();render()},
+ event:function(){var v=$('#ex').value.trim();if(!v)return;var ev={id:uid(),date:ui.sel,time:$('#et').value,title:v},r=$('#er').value;if(r)ev.rec=r;S.events.push(ev);save();render()},
  project:function(){var v=$('#pn').value.trim();if(!v)return;var p={id:uid(),name:v,tasks:[]};S.projects.push(p);ui.proj=p.id;save();render()},
  task:function(){var v=$('#tn').value.trim();if(!v)return;S.projects.filter(function(x){return x.id===ui.proj})[0].tasks.push({id:uid(),text:v,done:false});save();render()},
  addex:function(){
   var s=$('#exsel').value,name=s==='__custom'?$('#excustom').value.trim():s;if(!name)return;
   S.routines[ui.planDay].ex.push({id:uid(),name:name,sets:3,reps:8});save();render();
  },
+ weight:function(){var d=$('#wd').value||today(),v=num($('#wv').value);if(d>today()){toast('That date is in the future.');return}if(v<20||v>400){toast('Enter a weight between 20 and 400 kg.');return}S.weights[d]=Math.round(v*10)/10;save();toast('Weight logged.');render()},
+ wtarget:function(){var v=num($('#wt').value);if(v<20||v>400){toast('Enter a weight between 20 and 400 kg.');return}S.wtarget=Math.round(v*10)/10;save();render()},
+ review:function(){var k=iso(addDays(mondayOf(new Date()),ui.revOff*7)),o={well:$('#rw').value.trim(),hard:$('#rh').value.trim(),next:$('#rn').value.trim()};if(o.well||o.hard||o.next){o.t=Date.now();S.reviews[k]=o}else delete S.reviews[k];save();toast('Review saved.');render()},
  goal:function(){var v=num($('#gl').value);if(v>=500){S.goal=Math.round(v);save();render()}},
  meal:function(){var n=$('#mn').value.trim(),k=num($('#mk').value);if(!n||k<0)return;(S.meals[ui.calDate]=S.meals[ui.calDate]||[]).push({id:uid(),name:n,kcal:Math.round(k),p:num($('#mp').value)});save();render()},
  book:function(){var t=$('#bt').value.trim(),p=Math.round(num($('#bp').value));if(!t||p<1)return;S.books.push({id:uid(),title:t,author:$('#ba').value.trim(),pages:p,cur:0});save();render()},
@@ -807,6 +933,7 @@ var C={
  lw:function(el){S.live.entries[+el.dataset.ei].sets[+el.dataset.si].w=el.value===''?'':num(el.value);save()},
  lr:function(el){S.live.entries[+el.dataset.ei].sets[+el.dataset.si].r=el.value===''?'':num(el.value);save()},
  ld:function(el){S.live.entries[+el.dataset.ei].sets[+el.dataset.si].done=el.checked;save()},
+ rev:function(el){var k=iso(addDays(mondayOf(new Date()),ui.revOff*7)),o=S.reviews[k]=S.reviews[k]||{};o[el.dataset.f]=el.value.trim();o.t=Date.now();save()},
  bookpg:function(el){var b=S.books.filter(function(x){return x.id===el.dataset.id})[0];b.cur=Math.max(0,Math.min(b.pages,Math.round(num(el.value))));save();render()}
 };
 
