@@ -58,6 +58,15 @@ h3{font-size:20px;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
 .brand{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:.14em;text-transform:uppercase}
 .brand i{font-style:normal;color:var(--accent)}
 .clock{font-family:var(--mono);font-size:15px;color:var(--muted);font-variant-numeric:tabular-nums}
+.brandrow{flex-wrap:wrap}
+.top-right{display:flex;align-items:center;gap:14px;justify-content:flex-end}
+.minit{display:flex;align-items:center;gap:1px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:2px}
+.minit button{background:none;border:0;color:var(--muted);width:28px;height:28px;border-radius:4px;cursor:pointer;display:grid;place-items:center;padding:0}
+.minit button:hover{color:var(--accent);background:var(--accent-soft)}
+.minit .mt{font-family:var(--mono);font-size:14px;min-width:54px;text-align:center;font-variant-numeric:tabular-nums;color:var(--fg)}
+.minit.run .mt{color:var(--accent)}
+.minit.done .mt{color:var(--warn)}
+@media (max-width:520px){.top-right{width:100%;justify-content:space-between}}
 .rail{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin-top:6px}
 .rail::-webkit-scrollbar{display:none}
 .rail button{flex:none;display:flex;align-items:center;gap:6px;background:none;border:0;border-bottom:2px solid transparent;padding:9px 11px;color:var(--muted);cursor:pointer;font-size:13px;font-weight:500;white-space:nowrap}
@@ -192,7 +201,7 @@ table.hab{border-collapse:collapse;width:100%;min-width:560px}
 </head>
 <body>
 <div class="top"><div class="top-in">
-  <div class="brandrow"><div class="brand">Command<i>/</i>Centre</div><div class="clock" id="clock">--:--</div></div>
+  <div class="brandrow"><div class="brand">Command<i>/</i>Centre</div><div class="top-right"><div class="minit" id="mini" role="group" aria-label="Quick timer"></div><div class="clock" id="clock">--:--</div></div></div>
   <nav class="rail" id="rail" aria-label="Modules"></nav>
 </div></div>
 <div class="wrap"><main id="app"></main></div>
@@ -398,6 +407,7 @@ var ICONS={
  books:'<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5zM4 19a2 2 0 0 0 2 2h13"/>',
  notes:'<path d="M5 3h10l4 4v14H5zM14 3v5h5M8 13h8M8 17h6"/>',
  focus:'<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/>',
+ minus:'<path d="M5 12h14"/>',plus:'<path d="M12 5v14M5 12h14"/>',play:'<path d="M8 5l11 7-11 7z"/>',pause:'<path d="M9 5v14M15 5v14"/>',reset:'<path d="M4 12a8 8 0 1 0 3-6.2M4 4v4h4"/>',
  prefs:'<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>'
 };
 var ic=function(n){return '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">'+ICONS[n]+'</svg>'};
@@ -414,7 +424,7 @@ function defaults(){
     habits:[{id:uid(),name:'Drink 3L water',days:{}},{id:uid(),name:'Read 20 minutes',days:{}},{id:uid(),name:'Train or walk',days:{}},{id:uid(),name:'In bed before 23:00',days:{}}],
     events:[],projects:[],routines:r,workouts:[],live:null,
     goal:3300,meals:{},books:[],notes:[],
-    focusCfg:{focus:25,short:5,long:15},sessions:{},todayFocus:{}};
+    focusCfg:{focus:25,short:5,long:15},sessions:{},todayFocus:{},miniMin:5};
 }
 var S=defaults();
 function normalise(o){var d=defaults();for(var k in d){if(o[k]===undefined)o[k]=d[k]}for(var i=0;i<7;i++){if(!o.routines[i])o.routines[i]={name:'',ex:[]}}return o}
@@ -473,7 +483,7 @@ function installPanel(){
 /* Small API handed to the adapter so it can push remote changes into the UI */
 window.CC={
   getState:function(){return S},
-  replaceState:function(s){S=normalise(s);applyTheme();render()},
+  replaceState:function(s){S=normalise(s);applyTheme();render();miniSync()},
   setStatus:function(t){ui.sync=t;paintSync()},
   refresh:function(){render()}
 };
@@ -800,6 +810,52 @@ var C={
  bookpg:function(el){var b=S.books.filter(function(x){return x.id===el.dataset.id})[0];b.cur=Math.max(0,Math.min(b.pages,Math.round(num(el.value))));save();render()}
 };
 
+/* ---------- quick timer (top bar) ---------- */
+var mini={set:300,rem:300,end:0,run:false,done:false};
+function miniLoad(){
+  mini.set=Math.max(1,Math.min(180,S.miniMin||5))*60;mini.rem=mini.set;mini.run=false;mini.done=false;
+  try{var j=JSON.parse(localStorage.getItem('cc-mini')||'null');
+    if(j&&typeof j.rem==='number'){mini.rem=j.rem;mini.end=j.end||0;mini.run=!!j.run;
+      if(mini.run&&mini.end<=Date.now()){mini.run=false;mini.rem=0;mini.done=true}}}catch(e){}
+}
+function miniStore(){try{localStorage.setItem('cc-mini',JSON.stringify({rem:mini.rem,end:mini.end,run:mini.run}))}catch(e){}}
+function miniLeft(){return mini.run?Math.max(0,(mini.end-Date.now())/1000):mini.rem}
+function miniRender(){
+  var el=$('#mini');if(!el)return;
+  el.className='minit'+(mini.run?' run':'')+(mini.done?' done':'');
+  var idle=!mini.run&&mini.rem===mini.set&&!mini.done;
+  el.innerHTML='<button data-act="miniminus" aria-label="One minute less" title="One minute less">'+ic('minus')+'</button>'+
+    '<span class="mt" id="mt" role="timer" aria-live="off">'+fmtT(miniLeft())+'</span>'+
+    '<button data-act="miniplus" aria-label="One minute more" title="One minute more">'+ic('plus')+'</button>'+
+    '<button data-act="miniplay" aria-label="'+(mini.run?'Pause timer':'Start timer')+'" title="'+(mini.run?'Pause':'Start')+'">'+ic(mini.run?'pause':'play')+'</button>'+
+    (idle||mini.run?'':'<button data-act="minireset" aria-label="Reset timer" title="Reset">'+ic('reset')+'</button>');
+}
+function miniTick(){
+  if(!mini.run)return;
+  var left=(mini.end-Date.now())/1000;
+  if(left<=0){mini.run=false;mini.rem=0;mini.done=true;miniStore();miniRender();beep(1);setTimeout(function(){beep(1)},650);toast('Timer finished.');return}
+  var t=$('#mt');if(t)t.textContent=fmtT(left);
+}
+function miniAdjust(d){
+  var wasIdle=!mini.run&&mini.rem===mini.set&&!mini.done,wasDone=mini.done;
+  var base=wasDone?mini.set:miniLeft();
+  var next=Math.max(wasIdle||wasDone?60:1,Math.min(180*60,Math.round(base+d*60)));
+  mini.done=false;
+  if(mini.run){mini.end=Date.now()+next*1000}else{mini.rem=next}
+  if(wasIdle||wasDone){mini.set=next;S.miniMin=Math.round(next/60);save()}
+  miniStore();miniRender();
+}
+function miniSync(){if(!mini.run&&mini.rem===mini.set&&!mini.done){mini.set=Math.max(1,Math.min(180,S.miniMin||5))*60;mini.rem=mini.set;miniStore();miniRender()}}
+A.miniminus=function(){miniAdjust(-1)};
+A.miniplus=function(){miniAdjust(1)};
+A.miniplay=function(){
+  if(mini.run){mini.rem=miniLeft();mini.run=false}
+  else{if(mini.rem<=0||mini.done){mini.rem=mini.set;mini.done=false}mini.end=Date.now()+mini.rem*1000;mini.run=true;beep(0)}
+  miniStore();miniRender();
+};
+A.minireset=function(){mini.rem=mini.set;mini.run=false;mini.done=false;miniStore();miniRender()};
+setInterval(miniTick,250);
+
 /* ---------- timer ---------- */
 function setMode(m){var t=ui.t;t.mode=m;t.running=false;t.remaining=S.focusCfg[m]*60;render()}
 function paintTimer(){var t=ui.t,e=$('#tdisp');var s=t.running?(t.end-Date.now())/1000:t.remaining;if(e)e.textContent=fmtT(s);document.title=t.running?fmtT(s)+' · Command Centre':'Command Centre'}
@@ -844,6 +900,7 @@ window.addEventListener('hashchange',function(){setView(location.hash.replace('#
   var h=location.hash.replace('#','');ui.view=V[h]?h:'home';
   ui.t.remaining=S.focusCfg.focus*60;
   render();
+  miniLoad();miniRender();
   if(D.start)D.start(window.CC);
 })();
 })();
