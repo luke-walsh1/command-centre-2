@@ -1294,7 +1294,7 @@ function miniTick(){
 function miniAdjust(d){
   var wasIdle=!mini.run&&mini.rem===mini.set&&!mini.done,wasDone=mini.done;
   var base=wasDone?mini.set:miniLeft();
-  var next=Math.max(wasIdle||wasDone?60:1,Math.min(180*60,Math.round(base+d*60)));
+  var next=Math.max(wasIdle||wasDone?60:1,Math.min(180*60,base+d*60));
   mini.done=false;
   if(mini.run){mini.end=Date.now()+next*1000}else{mini.rem=next}
   if(wasIdle||wasDone){mini.set=next;S.miniMin=Math.round(next/60);save()}
