@@ -197,6 +197,15 @@ table.hab{border-collapse:collapse;width:100%;min-width:560px}
 .plts{display:flex;align-items:center;gap:3px;margin:10px 0;min-height:64px}
 .plts .barend{width:26px;height:10px;background:var(--muted);border-radius:2px}
 .plts .plt{display:flex;align-items:center;justify-content:center;width:22px;border-radius:3px;background:var(--accent);color:#fff;font:600 10px var(--mono);writing-mode:vertical-rl;transform:rotate(180deg)}
+.mstat{display:block;padding:10px 14px;border-radius:6px;font-weight:600;border:1px solid currentColor;background:color-mix(in srgb,currentColor 9%,transparent)}
+.mstat[hidden]{display:none}
+.mstat.extra,.mstat.done{color:var(--good)}.mstat.behind{color:var(--warn)}.mstat.late,.mstat.done.late{color:var(--bad)}.mstat.idle{color:var(--muted)}
+.mclock{font-family:var(--display);font-weight:800;font-size:64px;line-height:1.05;font-variant-numeric:tabular-nums;color:var(--accent)}
+.mclock.over{color:var(--warn)}
+.mrow .mark{width:20px;text-align:center;color:var(--muted)}
+.mrow.done .mark{color:var(--good)}.mrow.cur .mark{color:var(--accent)}
+.mrow.done .grow,.mrow.skip .grow{color:var(--muted);text-decoration:none}
+@media (max-width:520px){.mtime{display:none}}
 .toastbtn{margin-left:14px;background:none;border:1px solid currentColor;color:inherit;border-radius:4px;padding:2px 10px;font-weight:600;cursor:pointer}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:6px;font-size:14px;z-index:40;max-width:90vw}
 .focusline{display:flex;flex-direction:column;gap:6px}
@@ -423,13 +432,14 @@ var ICONS={
  books:'<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5zM4 19a2 2 0 0 0 2 2h13"/>',
  notes:'<path d="M5 3h10l4 4v14H5zM14 3v5h5M8 13h8M8 17h6"/>',
  focus:'<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/>',
+ morning:'<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',
  body:'<path d="M5 5h14l2 15H3z"/><path d="M9 10a3 3 0 0 1 6 0"/>',
  review:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 13l2 2 4-4"/>',
  minus:'<path d="M5 12h14"/>',plus:'<path d="M12 5v14M5 12h14"/>',play:'<path d="M8 5l11 7-11 7z"/>',pause:'<path d="M9 5v14M15 5v14"/>',reset:'<path d="M4 12a8 8 0 1 0 3-6.2M4 4v4h4"/>',
  prefs:'<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>'
 };
 var ic=function(n){return '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">'+ICONS[n]+'</svg>'};
-var MODS=[['home','Home'],['habits','Habits'],['calendar','Calendar'],['projects','Projects'],['gym-plan','Gym Plan'],['gym-stats','Gym Stats'],['calories','Calories'],['body','Weight'],['books','Books'],['notes','Notes'],['focus','Focus'],['review','Review'],['prefs','Settings']];
+var MODS=[['home','Home'],['habits','Habits'],['morning','Morning'],['calendar','Calendar'],['projects','Projects'],['gym-plan','Gym Plan'],['gym-stats','Gym Stats'],['calories','Calories'],['body','Weight'],['books','Books'],['notes','Notes'],['focus','Focus'],['review','Review'],['prefs','Settings']];
 
 var QUOTES=['Do the next small thing well.','Consistency beats intensity.','Protect the first hour.','One clear priority is enough.','Make it easy to start.','Finish what is already open.','Sleep is training too.','Show up, then adjust.','Slow is smooth, smooth is fast.','Write it down, then let it go.','Progress is quiet and cumulative.','Remove one obstacle today.','Ship the draft.','Rest is part of the plan.'];
 var EXS=['Barbell Bench Press','Incline Dumbbell Press','Barbell Back Squat','Conventional Deadlift','Overhead Press','Lat Pulldown','Machine Barbell Row','Dumbbell Bicep Curl','Tricep Cable Pushdown','Leg Press','Romanian Deadlift','Pull-up','Lateral Raise','Walking Lunge'];
@@ -442,7 +452,7 @@ function defaults(){
     habits:[{id:uid(),name:'Drink 3L water',days:{}},{id:uid(),name:'Read 20 minutes',days:{}},{id:uid(),name:'Train or walk',days:{}},{id:uid(),name:'In bed before 23:00',days:{}}],
     events:[],projects:[],routines:r,workouts:[],live:null,
     goal:3300,meals:{},books:[],notes:[],
-    focusCfg:{focus:25,short:5,long:15},sessions:{},todayFocus:{},miniMin:5,weights:{},wtarget:0,reviews:{},exlist:EXS.slice(),restSec:90,homeOrder:[],homeHide:[],navHide:[],barKg:20,plates:[25,20,15,10,5,2.5,1.25],savedMeals:[]};
+    focusCfg:{focus:25,short:5,long:15},sessions:{},todayFocus:{},miniMin:5,weights:{},wtarget:0,reviews:{},exlist:EXS.slice(),restSec:90,homeOrder:[],homeHide:[],navHide:[],barKg:20,plates:[25,20,15,10,5,2.5,1.25],savedMeals:[],morn:{start:'07:00',end:'08:30',steps:[{id:uid(),name:'Wake up and drink water',min:5},{id:uid(),name:'Stretch',min:10},{id:uid(),name:'Shower',min:15},{id:uid(),name:'Get dressed',min:10},{id:uid(),name:'Breakfast',min:20},{id:uid(),name:'Pack bag',min:5}]},mlog:{}};
 }
 var S=defaults();
 function normalise(o){var d=defaults();for(var k in d){if(o[k]===undefined)o[k]=d[k]}for(var i=0;i<7;i++){if(!o.routines[i])o.routines[i]={name:'',ex:[]}}return o}
@@ -510,6 +520,7 @@ window.CC={
 function mv(a,f,t){var x=a.splice(f,1)[0];a.splice(t,0,x)}
 var R={
  habits:function(f,t){mv(S.habits,f,t)},
+ morn:function(f,t){mv(S.morn.steps,f,t)},
  home:function(f,t){var o=homeOrder();mv(o,f,t);S.homeOrder=o},
  routine:function(f,t){mv(S.routines[ui.planDay].ex,f,t)},
  exlist:function(f,t){S.exlist=exList().slice();mv(S.exlist,f,t)}
@@ -519,8 +530,8 @@ function grip(kind,label){return '<button type="button" class="grip" data-grip="
 
 /* ---------- helpers ---------- */
 function toast(m,undo){var t=$('#toast');t.textContent=m;if(undo){var b=document.createElement('button');b.type='button';b.className='toastbtn';b.dataset.act='undo';b.textContent='Undo';t.appendChild(b)}else ui.undo=null;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){t.hidden=true;ui.undo=null},undo?6000:2200)}
-var UNDO_KEYS={habit:['habits'],event:['events'],skip:['events'],project:['projects'],task:['projects'],workout:['workouts'],meal:['meals'],book:['books'],note:['notes'],exlist:['exlist'],weight:['weights'],savedmeal:['savedMeals']};
-var UNDO_LABEL={habit:'Habit deleted.',event:'Event deleted.',skip:'Day skipped.',project:'Project deleted.',task:'Task deleted.',workout:'Workout deleted.',meal:'Meal deleted.',book:'Book deleted.',note:'Note deleted.',exlist:'Exercise removed from list.',weight:'Weigh-in deleted.',savedmeal:'Saved meal removed.'};
+var UNDO_KEYS={mstep:['morn'],mlog:['mlog'],habit:['habits'],event:['events'],skip:['events'],project:['projects'],task:['projects'],workout:['workouts'],meal:['meals'],book:['books'],note:['notes'],exlist:['exlist'],weight:['weights'],savedmeal:['savedMeals']};
+var UNDO_LABEL={mstep:'Step deleted.',mlog:'Morning run cleared.',habit:'Habit deleted.',event:'Event deleted.',skip:'Day skipped.',project:'Project deleted.',task:'Task deleted.',workout:'Workout deleted.',meal:'Meal deleted.',book:'Book deleted.',note:'Note deleted.',exlist:'Exercise removed from list.',weight:'Weigh-in deleted.',savedmeal:'Saved meal removed.'};
 function snapKeys(keys){var o={};keys.forEach(function(k){o[k]=JSON.parse(JSON.stringify(S[k]))});return o}
 function offerUndo(keys,msg){ui.undo={snap:snapKeys(keys)};return msg}
 function asked(key){if(ui.confirm===key){ui.confirm=null;return true}ui.confirm=key;render();return false}
@@ -546,7 +557,7 @@ function occursOn(e,k){
   return false;
 }
 function eventsOn(k){return S.events.filter(function(e){return occursOn(e,k)}).sort(function(a,b){return (a.time||'').localeCompare(b.time||'')})}
-var HOME_TILES=[['habits','Habits today'],['calories','Calories left'],['event','Next event'],['projects','Projects'],['training','Training'],['focus','Focus sessions'],['weight','Weight'],['books','Reading'],['notes','Notes']];
+var HOME_TILES=[['habits','Habits today'],['morning','Morning routine'],['calories','Calories left'],['event','Next event'],['projects','Projects'],['training','Training'],['focus','Focus sessions'],['weight','Weight'],['books','Reading'],['notes','Notes']];
 function homeOrder(){var o=(S.homeOrder||[]).filter(function(id){return HOME_TILES.some(function(t){return t[0]===id})});HOME_TILES.forEach(function(t){if(o.indexOf(t[0])<0)o.push(t[0])});return o}
 function homeGridHtml(tiles){
   var hide=S.homeHide||[],list=homeOrder().filter(function(id){return hide.indexOf(id)<0});
@@ -598,6 +609,10 @@ V.home=function(){
   var ses=S.sessions[td]||0;
   var tile=function(v,ico,lab,big,sub,extra){return '<button class="tile" data-act="nav" data-v="'+v+'"><span class="lab">'+ic(ico)+lab+'</span><span class="big">'+big+'</span><span class="sub">'+sub+'</span>'+(extra||'')+'</button>'};
   var tiles={
+   morning:(function(){var st=mState(Date.now()),m=S.morn;
+     if(st.kind==='done')return tile('morning','morning','Morning routine','Done',st.text);
+     if(st.started&&st.cur)return tile('morning','morning','Morning routine','Step '+(st.curIdx+1)+'/'+m.steps.length,st.text);
+     return tile('morning','morning','Morning routine',m.steps.length?mClock(st.startBy):'Set up',m.steps.length?(st.text||'Latest start to be ready by '+esc(m.end)):'Add your steps')})(),
    habits:tile('habits','habits','Habits today',hd+'/'+ht,ht?(hd===ht?'All done. Nice.':(ht-hd)+' to go'):'No habits yet',bar(ht?hd/ht*100:0)),
    calories:tile('calories','calories','Calories left',fmtN(Math.max(rem,0)),fmtN(kc)+' of '+fmtN(S.goal)+' kcal eaten',bar(kc/S.goal*100,kc>S.goal)),
    event:tile('calendar','calendar','Next event',ev?esc(ev.time||'All day'):'None',ev?esc(ev.title)+' · '+parse(ev.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'Nothing scheduled'),
@@ -804,7 +819,8 @@ function weekStats(ws){
   var evn=dates.reduce(function(a,k){return a+eventsOn(k).length},0);
   var inW=wKeys().filter(function(k){return dates.indexOf(k)>-1}),wc=null,wnow=null;
   if(inW.length){wnow=S.weights[inW[inW.length-1]];var b=wOnOrBefore(iso(addDays(ws,-1)));wc=b?wnow-b.v:(inW.length>1?wnow-S.weights[inW[0]]:null)}
-  return {dates:dates,el:el.length,hDone:hDone,hTot:hTot,hPct:hTot?Math.round(hDone/hTot*100):null,per:per,wk:wk.length,sets:sets,vol:vol,logged:logged.length,avgKc:logged.length?Math.round(kc/logged.length):null,foc:foc,evn:evn,wnow:wnow,wc:wc};
+  var mRan=0,mOn=0;dates.forEach(function(k){var l=S.mlog[k];if(l&&l.fin){mRan++;if(l.late<=0)mOn++}});
+  return {mRan:mRan,mOn:mOn,dates:dates,el:el.length,hDone:hDone,hTot:hTot,hPct:hTot?Math.round(hDone/hTot*100):null,per:per,wk:wk.length,sets:sets,vol:vol,logged:logged.length,avgKc:logged.length?Math.round(kc/logged.length):null,foc:foc,evn:evn,wnow:wnow,wc:wc};
 }
 V.review=function(){
   var ws=addDays(mondayOf(new Date()),ui.revOff*7),key=iso(ws),r=S.reviews[key]||{};
@@ -821,6 +837,7 @@ V.review=function(){
    tile('Training','gym-plan',st.wk,st.wk?fmtN(st.vol)+' kg volume · '+st.sets+' sets':'No sessions logged',vs(st.wk,pv.wk,'',null))+
    tile('Calories','calories',st.avgKc==null?'–':fmtN(st.avgKc),st.avgKc==null?'Nothing logged':'avg kcal over '+st.logged+' logged day'+(st.logged===1?'':'s')+' · goal '+fmtN(S.goal),'')+
    tile('Weight','body',st.wnow==null?'–':fmtKg(st.wnow)+'<span style="font-size:18px"> kg</span>',st.wc==null?(st.wnow==null?'No weigh-ins':'One weigh-in'):(st.wc>0?'+':'')+fmtKg(st.wc)+' kg this week','')+
+   tile('Mornings','morning',st.mRan?st.mOn+'/'+st.mRan:'–',st.mRan?'ready on time':'No routines finished','')+
    tile('Focus sessions','focus',st.foc,st.foc?'completed':'None this week',vs(st.foc,pv.foc,'',null))+
    tile('Events','calendar',st.evn,st.evn===1?'on the calendar':'on the calendar','')+
   '</div>'+habits+
@@ -832,6 +849,30 @@ V.review=function(){
    '<div class="row"><button class="btn" type="submit">Save review</button>'+(r.t?'<span class="hint">Saved '+new Date(r.t).toLocaleDateString('en-GB',{day:'numeric',month:'short'})+'</span>':'')+'</div></form></div>';
 };
 
+V.morning=function(){
+  var m=S.morn,st=mState(Date.now()),n=m.steps.length,total=mTotal(),win=hm(m.end)-hm(m.start),buf=win-total;
+  var live='';
+  if(!n)live='<div class="empty">Add your first step below.</div>';
+  else if(st.kind==='done'){
+    live='<div class="mstat done'+(st.late?' late':'')+'" id="mchip">'+esc(st.text)+'</div><p class="muted" style="margin:10px 0">Finished at '+mClock(st.log.fin)+' against a ready-by time of '+esc(m.end)+'.</p><ul class="list" id="mrows">'+mRowsHtml(st)+'</ul><div class="row" style="margin-top:12px"><button class="btn ghost sm" data-act="mundolast">Undo last step</button><button class="btn ghost sm" data-act="mreset">Clear today</button></div>';
+  }else if(!st.started){
+    live='<div class="mstat '+st.kind+'" id="mchip"'+(st.text?'':' hidden')+'>'+esc(st.text)+'</div><p style="margin:10px 0 0">Latest start: <b class="mono">'+mClock(st.startBy)+'</b> to be ready by <b class="mono">'+esc(m.end)+'</b> ('+total+' min of steps).</p><div class="row" style="margin:12px 0"><button class="btn" data-act="mstart">Start morning routine</button></div><ul class="list" id="mrows">'+mRowsHtml(st)+'</ul><p class="hint" style="margin:8px 0 0">Times shown assume you start now.</p>';
+  }else{
+    live='<div class="mstat '+st.kind+'" id="mchip">'+esc(st.text)+'</div>'+
+     '<div style="margin:14px 0 4px"><div class="lab2">Step '+(st.curIdx+1)+' of '+n+'</div><h3 style="margin:2px 0 0;font-size:22px;text-transform:none;letter-spacing:.01em;font-family:var(--body);font-weight:600">'+esc(st.cur.name)+'</h3></div>'+
+     '<div class="mclock'+(st.curLeft<0?' over':'')+'" id="mclock" role="timer">'+mClockHtml(st)+'</div><div class="hint">'+(st.curLeft<0?'over the planned ':'left of ')+st.cur.min+' min</div>'+
+     '<div class="row" style="margin:14px 0"><button class="btn" data-act="mdone">Done</button><button class="btn ghost" data-act="mskip">Skip</button></div><ul class="list" id="mrows">'+mRowsHtml(st)+'</ul>'+
+     '<div class="row" style="margin-top:12px"><button class="btn ghost sm" data-act="mundolast">Undo last step</button><button class="btn ghost sm" data-act="mreset">Clear today</button></div>';
+  }
+  var t=hm(m.start);
+  var plan=m.steps.length?'<ul class="list">'+m.steps.map(function(x){var a=t;t+=x.min;return '<li data-row>'+grip('morn',x.name)+'<input type="text" maxlength="50" value="'+esc(x.name)+'" data-chg="mname" data-id="'+x.id+'" aria-label="Step name" style="flex:1 1 130px;min-width:0"><input type="number" min="1" max="240" value="'+x.min+'" data-chg="mmin" data-id="'+x.id+'" style="width:70px" aria-label="Minutes"><span class="hint">min</span><span class="hint mtime" style="width:92px;text-align:right">'+pad(Math.floor(a/60)%24)+':'+pad(a%60)+'–'+pad(Math.floor(t/60)%24)+':'+pad(t%60)+'</span>'+delBtn('mstep',x.id,'','✕')+'</li>'}).join('')+'</ul>':'';
+  return head('Morning routine',st.kind==='done'?'Done for today':'Ready by '+esc(m.end))+
+  '<div class="panel mlive"><h3>Today</h3>'+live+'</div>'+
+  '<div class="panel"><h3>Your routine</h3><div class="form"><label class="hint" for="ms">Start</label><input id="ms" type="time" value="'+esc(m.start)+'" data-chg="mtime" data-f="start" aria-label="Planned start time"><label class="hint" for="me">Ready by</label><input id="me" type="time" value="'+esc(m.end)+'" data-chg="mtime" data-f="end" aria-label="Ready by"></div>'+
+   '<p class="'+(buf<0?'':'muted')+'" style="margin:10px 0;'+(buf<0?'color:var(--bad)':'')+'">'+total+' min of steps in a '+Math.max(win,0)+' min window. '+(win<=0?'Set a ready-by time after your start.':buf>=0?'That leaves '+buf+' min of buffer.':'That is '+(-buf)+' min too much.')+'</p>'+
+   plan+
+   '<form data-form="mstep" class="form" style="margin-top:12px"><input id="mn2" type="text" maxlength="50" placeholder="New step, e.g. Make coffee" required aria-label="New step"><input id="mm2" type="number" min="1" max="240" value="5" style="width:80px" aria-label="Minutes"><span class="hint">min</span><button class="btn" type="submit">Add step</button></form></div>';
+};
 V.books=function(){
   return head('Book tracker',S.books.filter(function(b){return b.cur>=b.pages&&b.pages}).length+' finished · '+S.books.filter(function(b){return b.cur<b.pages}).length+' in progress')+
   (S.books.length?'<div class="grid">'+S.books.map(function(b){var p=b.pages?Math.round(b.cur/b.pages*100):0;
@@ -882,6 +923,69 @@ function sugFor(name,tr){
   if(top<=0)return hit?{text:'You hit '+tr+' reps on every set last time. Try one more rep per set.',w:null}:null;
   if(hit){var w=top+(top>=20?2.5:1);return {text:'You hit '+tr+' reps at '+top+' kg last time. Try '+w+' kg × '+tr+'.',w:w}}
   return {text:'Aim for '+tr+' reps at '+top+' kg before adding weight.',w:top};
+}
+/* ---------- morning routine ---------- */
+function hm(t){var p=String(t||'0:0').split(':');return (+p[0]||0)*60+(+p[1]||0)}
+function mAt(t,base){var d=new Date(base||Date.now());d.setHours(0,0,0,0);return d.getTime()+hm(t)*60000}
+function mAdvance(skip){
+  var log=S.mlog[today()];if(!log||log.fin)return;
+  var st=mState(Date.now());if(!st.cur)return;
+  var now=Date.now();log.steps[st.cur.id]=skip?{t:now,skip:true}:{t:now};
+  if(S.morn.steps.every(function(x){return log.steps[x.id]})){
+    log.fin=now;log.dl=mAt(S.morn.end,now);log.late=Math.round((now-log.dl)/60000);
+    toast(log.late<=0?'Morning done. Nice.':'Morning done, '+log.late+' min late.');
+  }
+  save();render();
+}
+function mClock(ts){var d=new Date(ts);return pad(d.getHours())+':'+pad(d.getMinutes())}
+function mTotal(){return S.morn.steps.reduce(function(a,x){return a+x.min},0)}
+function mState(now){
+  var m=S.morn,log=S.mlog[today()]||null,total=mTotal(),dl=mAt(m.end,now),startBy=dl-total*60000,cur=null,curIdx=-1,curStart=0,t=log?log.start:now,rows=[];
+  m.steps.forEach(function(x,i){
+    var r=log&&log.steps[x.id];
+    if(r){rows.push({s:x,state:r.skip?'skip':'done',actual:Math.round((r.t-t)/60000)});t=r.t}
+    else if(log&&!log.fin&&!cur){cur=x;curIdx=i;curStart=t;rows.push({s:x,state:'cur'})}
+    else rows.push({s:x,state:'todo'});
+  });
+  var spent=cur?now-curStart:0,curLeft=cur?cur.min*60000-spent:0,pt=now;
+  rows.forEach(function(r){
+    if(r.state==='cur'){r.pStart=curStart;pt=now+Math.max(0,curLeft);r.pEnd=pt}
+    else if(r.state==='todo'){r.pStart=pt;pt+=r.s.min*60000;r.pEnd=pt}
+  });
+  var out={log:log,rows:rows,cur:cur,curIdx:curIdx,curLeft:curLeft,dl:dl,startBy:startBy,total:total,projFin:pt,started:!!log,kind:'idle',n:0,text:''};
+  if(log&&log.fin){
+    var d=Math.round((log.fin-dl)/60000);out.kind='done';out.n=Math.abs(d);
+    out.text=d<0?'Ready '+(-d)+' min early':d===0?'Ready right on time':'Ready '+d+' min late';
+    out.late=d>0;return out;
+  }
+  if(!log&&!(now>=startBy-90*60000&&now<=dl+60*60000))return out;
+  if(!m.steps.length)return out;
+  var slack=(dl-pt)/60000,skipTip=' Skip a step or speed up to be ready by '+m.end+'.';
+  if(now>dl){out.kind='late';out.n=Math.max(1,Math.ceil((now-dl)/60000));out.text=log?'Late by '+out.n+' min. You were due to be ready by '+m.end+'.':'Already '+out.n+' min past your ready-by time of '+m.end+'.'}
+  else if(slack<0){out.kind='behind';out.n=Math.ceil(-slack);out.text=log?'Behind by '+out.n+' min.'+skipTip:'If you start now, you will be '+out.n+' min behind.'+skipTip}
+  else{out.kind='extra';out.n=Math.round(slack);out.text=log?(out.n>0?'Extra time: '+out.n+' min to spare.':'On schedule, with no spare time.'):(out.n>0?'If you start now, you have '+out.n+' min to spare.':'If you start now, you are on schedule with no spare time.')}
+  return out;
+}
+function mRowsHtml(st){
+  return st.rows.map(function(r){
+    var x=r.s,hint,mark;
+    if(r.state==='done'){mark='✓';var dv=r.actual-x.min;hint=r.actual+' min'+(dv>0?' (+'+dv+')':dv<0?' ('+dv+')':'')}
+    else if(r.state==='skip'){mark='–';hint='skipped'}
+    else{mark=r.state==='cur'?'▶':'○';hint=mClock(r.pStart)+' → '+mClock(r.pEnd)}
+    return '<li class="mrow '+r.state+'"><span class="mark" aria-hidden="true">'+mark+'</span><span class="grow">'+(r.state==='cur'?'<b>'+esc(x.name)+'</b>':esc(x.name))+' <span class="hint">'+x.min+' min</span></span><span class="hint">'+hint+'</span></li>';
+  }).join('');
+}
+function mClockHtml(st){
+  if(!st.cur)return '';
+  var left=Math.round(st.curLeft/1000),over=left<0,a=Math.abs(left);
+  return (over?'+':'')+pad(Math.floor(a/60))+':'+pad(a%60);
+}
+function paintMorning(){
+  if(ui.view!=='morning')return;
+  var st=mState(Date.now()),c=$('#mchip'),k=$('#mclock'),r=$('#mrows');
+  if(c){c.className='mstat '+st.kind;c.textContent=st.text;c.hidden=!st.text}
+  if(k){k.textContent=mClockHtml(st);k.className='mclock'+(st.cur&&st.curLeft<0?' over':'')}
+  if(r)r.innerHTML=mRowsHtml(st);
 }
 function plateSplit(total){
   var bar=S.barKg>0?S.barKg:20,avail=(S.plates||[]).filter(function(x){return x>0}).sort(function(a,b){return b-a});
@@ -986,6 +1090,11 @@ var A={
  navvis:function(el){var v=el.dataset.v,nh=(S.navHide||[]).slice(),i=nh.indexOf(v);if(i<0)nh.push(v);else nh.splice(i,1);S.navHide=nh;save();render()},
  platetog:function(el){var q=+el.dataset.p,h=(S.plates||[]).slice(),i=h.indexOf(q);if(i<0)h.push(q);else h.splice(i,1);S.plates=h.sort(function(a,b){return b-a});save();render()},
  plateex:function(el){var i=+el.dataset.ei;ui.plateEx=ui.plateEx===i?null:i;render()},
+ mstart:function(){if(!S.morn.steps.length)return;S.mlog[today()]={start:Date.now(),steps:{},fin:null};ui.mBeep='';save();render()},
+ mdone:function(){mAdvance(false)},
+ mskip:function(){mAdvance(true)},
+ mundolast:function(){var log=S.mlog[today()];if(!log)return;var last=null;S.morn.steps.forEach(function(x){if(log.steps[x.id])last=x});if(last)delete log.steps[last.id];log.fin=null;if(!last&&!Object.keys(log.steps).length)delete S.mlog[today()];save();render()},
+ mreset:function(){ui.undo={snap:snapKeys(['mlog'])};delete S.mlog[today()];save();render();toast('Morning run cleared.',true)},
  exmgr:function(){ui.exMgr=!ui.exMgr;render()},
  exsort:function(){S.exlist=exList().slice().sort(function(a,b){return a.localeCompare(b)});save();render()},
  exdefaults:function(){var n=0;EXS.forEach(function(x){if(exAdd(x))n++});save();toast(n?n+' default exercise'+(n>1?'s':'')+' added.':'Nothing missing.');render()},
@@ -1055,6 +1164,7 @@ var A={
   if(kind==='book')S.books=S.books.filter(function(x){return x.id!==id});
   if(kind==='note')S.notes=S.notes.filter(function(x){return x.id!==id});
   if(kind==='exlist')S.exlist=exList().filter(function(x,i){return i!==+id});
+  if(kind==='mstep')S.morn.steps=S.morn.steps.filter(function(x){return x.id!==id});
   if(kind==='savedmeal')S.savedMeals=S.savedMeals.filter(function(x){return x.id!==id});
   save();render();toast(UNDO_LABEL[kind]||'Deleted.',true);
  }
@@ -1085,6 +1195,7 @@ var F={
   if(s==='__custom'){var m=exList().filter(function(x){return x.toLowerCase()===name.toLowerCase()})[0];if(m)name=m;else exAdd(name)}
   S.live.entries.push(liveEntry(name,3,8));save();render();
  },
+ mstep:function(){var n=$('#mn2').value.trim(),m=clamp($('#mm2').value,1,240);if(!n)return;S.morn.steps.push({id:uid(),name:n,min:m});save();render();var i=$('#mn2');if(i)i.focus()},
  exadd:function(){var v=$('#exnew').value.trim();if(!v)return;if(!exAdd(v)){toast('That exercise is already in the list.');return}save();render();var n=$('#exnew');if(n)n.focus()},
  weight:function(){var d=$('#wd').value||today(),v=num($('#wv').value);if(d>today()){toast('That date is in the future.');return}if(v<20||v>400){toast('Enter a weight between 20 and 400 kg.');return}S.weights[d]=Math.round(v*10)/10;save();toast('Weight logged.');render()},
  wtarget:function(){var v=num($('#wt').value);if(v<20||v>400){toast('Enter a weight between 20 and 400 kg.');return}S.wtarget=Math.round(v*10)/10;save();render()},
@@ -1123,6 +1234,9 @@ var C={
  },
  homevis:function(el){var id=el.dataset.id,h=(S.homeHide||[]).slice(),i=h.indexOf(id);if(el.checked&&i>-1)h.splice(i,1);if(!el.checked&&i<0)h.push(id);S.homeHide=h;save();render()},
  barkg:function(el){var v=num(el.value);S.barKg=v>=1&&v<=50?v:20;el.value=S.barKg;save();var o=$('#plateout');if(o)o.innerHTML=plateHtml(ui.plateW)},
+ mname:function(el){var x=S.morn.steps.filter(function(y){return y.id===el.dataset.id})[0];if(x&&el.value.trim())x.name=el.value.trim();save()},
+ mmin:function(el){var x=S.morn.steps.filter(function(y){return y.id===el.dataset.id})[0];if(x){x.min=clamp(el.value,1,240);el.value=x.min;save();render()}},
+ mtime:function(el){if(!el.value)return;S.morn[el.dataset.f]=el.value;save();render()},
  restsec:function(el){S.restSec=clamp(el.value,10,600);el.value=S.restSec;save()},
  exren:function(el){
   var i=+el.dataset.i,old=exList()[i],nn=el.value.trim();
@@ -1205,6 +1319,14 @@ setInterval(function(){
   if(l<=0){ui.rest.end=0;paintRest();beep(1);try{if(navigator.vibrate)navigator.vibrate([200,100,200])}catch(e){}toast('Rest over. Next set.')}
   else{var t=$('#restt');if(t)t.textContent=fmtT(l)}
 },250);
+setInterval(function(){
+  var log=S.mlog&&S.mlog[today()];
+  if(log&&!log.fin){
+    var st=mState(Date.now());
+    if(st.cur&&st.curLeft<=0){var key=st.cur.id+'@'+log.start;if(ui.mBeep!==key){ui.mBeep=key;beep(1);try{if(navigator.vibrate)navigator.vibrate([200,100,200])}catch(e){}toast('Time is up for "'+st.cur.name+'". Move on when you can.')}}
+  }
+  paintMorning();
+},1000);
 function tick(){var d=new Date();var e=$('#clock');if(e)e.textContent=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())}
 tick();setInterval(tick,1000);
 
