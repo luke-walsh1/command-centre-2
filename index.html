@@ -134,6 +134,9 @@ table.hab{border-collapse:collapse;width:100%;min-width:560px}
 .dot:hover{border-color:var(--accent)}
 .dot.on{background:var(--accent);border-color:var(--accent)}
 .dot.future{opacity:.35}
+.hab td:first-child .row{flex-wrap:wrap;gap:6px}.hab td:first-child input[type=text]{width:150px;min-width:0}.hab td:first-child select{max-width:150px}
+.dot.rest{border-style:dashed;opacity:.55}.restmark{color:var(--muted);font-size:18px;line-height:1}
+.dot.rest.on{opacity:1}
 .streak{font-family:var(--mono);font-size:13px;color:var(--muted);white-space:nowrap}
 .streak b{color:var(--fg)}
 /* calendar */
@@ -596,7 +599,25 @@ function wLatest(){var k=wKeys();return k.length?{d:k[k.length-1],v:S.weights[k[
 function wOnOrBefore(d){var k=wKeys().filter(function(x){return x<=d});return k.length?{d:k[k.length-1],v:S.weights[k[k.length-1]]}:null}
 function fmtKg(v){return (Math.round(v*10)/10).toFixed(1)}
 
-function habitStreak(h){var d=new Date();if(!h.days[iso(d)])d=addDays(d,-1);var n=0;while(h.days[iso(d)]){n++;d=addDays(d,-1)}return n}
+var EVERY=[[1,'Every day'],[2,'Every other day'],[3,'Every 3 days'],[7,'Once a week']];
+function habitEvery(h){return h.every>1?h.every:1}
+function everyLabel(n){var x=EVERY.filter(function(y){return y[0]===n})[0];return x?x[1]:'Every '+n+' days'}
+/* done, due, or rest (a rest day follows a completion; a habit repeating every N days is due again N days after the last one) */
+function habitState(h,k){
+  if(h.days[k])return 'done';
+  var n=habitEvery(h);
+  if(n>1){var d=parse(k);for(var i=1;i<n;i++){if(h.days[iso(addDays(d,-i))])return 'rest'}}
+  return 'due';
+}
+function habitStreak(h){
+  var n=habitEvery(h),d=new Date();
+  if(n===1){if(!h.days[iso(d)])d=addDays(d,-1);var c=0;while(h.days[iso(d)]){c++;d=addDays(d,-1)}return c}
+  var last=null;for(var i=0;i<=n;i++){var k=iso(addDays(d,-i));if(h.days[k]){last=k;break}}
+  if(!last)return 0;
+  var cnt=1,cur=parse(last);
+  for(;;){var found=false;for(var g=1;g<=n;g++){var k2=iso(addDays(cur,-g));if(h.days[k2]){cnt++;cur=addDays(cur,-g);found=true;break}}if(!found)break}
+  return cnt;
+}
 function mealsOn(d){return S.meals[d]||[]}
 function kcalOn(d){return mealsOn(d).reduce(function(a,m){return a+m.kcal},0)}
 function e1rm(w,r){return r<=1?w:w*(1+r/30)}
@@ -610,7 +631,7 @@ V.home=function(){
   var n=new Date(),h=n.getHours();
   var greet=h<5?'Late night':h<12?'Good morning':h<18?'Good afternoon':'Good evening';
   var td=today(),doy=Math.floor((n-new Date(n.getFullYear(),0,0))/864e5);
-  var hd=S.habits.filter(function(x){return x.days[td]}).length,ht=S.habits.length;
+  var dueH=S.habits.filter(function(x){return habitState(x,td)!=='rest'}),hd=dueH.filter(function(x){return x.days[td]}).length,ht=dueH.length;
   var kc=kcalOn(td),rem=S.goal-kc;
   var ev=nextEvent();
   var act=S.projects.filter(function(p){return p.tasks.length===0||projPct(p)<100});
@@ -625,7 +646,7 @@ V.home=function(){
      if(st.kind==='done')return tile('morning','morning','Morning routine','Done',st.text);
      if(st.started&&st.cur)return tile('morning','morning','Morning routine','Step '+(st.curIdx+1)+'/'+m.steps.length,st.text);
      return tile('morning','morning','Morning routine',m.steps.length?mClock(st.startBy):'Set up',m.steps.length?(st.text||'Latest start to be ready by '+esc(m.end)):'Add your steps')})(),
-   habits:tile('habits','habits','Habits today',hd+'/'+ht,ht?(hd===ht?'All done. Nice.':(ht-hd)+' to go'):'No habits yet',bar(ht?hd/ht*100:0)),
+   habits:tile('habits','habits','Habits today',hd+'/'+ht,ht?(hd===ht?'All done. Nice.':(ht-hd)+' to go'):(S.habits.length?'Rest day. Nothing due.':'No habits yet'),bar(ht?hd/ht*100:0)),
    calories:tile('calories','calories','Calories left',fmtN(Math.max(rem,0)),fmtN(kc)+' of '+fmtN(S.goal)+' kcal eaten',bar(kc/S.goal*100,kc>S.goal)),
    event:tile('calendar','calendar','Next event',ev?esc(ev.time||'All day'):'None',ev?esc(ev.title)+' · '+parse(ev.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'Nothing scheduled'),
    projects:tile('projects','projects','Projects',act.length,S.projects.length?avg+'% average completion':'Create your first project',bar(avg)),
@@ -650,14 +671,15 @@ V.habits=function(){
   var tot=0,dn=0;
   var rows=S.habits.map(function(h){
     var c=0;
-    var cells=days.map(function(d){var k=iso(d),on=!!h.days[k],fut=k>td;if(on)c++;if(k<=td){tot++;if(on)dn++}
-      return '<td><button class="dot'+(on?' on':'')+(fut?' future':'')+'" data-act="hab" data-id="'+h.id+'" data-d="'+k+'" aria-pressed="'+on+'" aria-label="'+esc(h.name)+' '+k+'">'+(on?'<svg class="ico" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" style="stroke-width:3"/></svg>':'')+'</button></td>'}).join('');
-    return '<tr data-row><td>'+(ui.editH?'<div class="row">'+grip('habits',h.name)+'<input type="text" value="'+esc(h.name)+'" data-chg="hname" data-id="'+h.id+'" aria-label="Habit name">'+delBtn('habit',h.id)+'</div>':esc(h.name))+'</td>'+cells+'<td class="streak"><b>'+habitStreak(h)+'</b> day streak<br>'+c+'/7 this week</td></tr>';
+    var ev=habitEvery(h);
+    var cells=days.map(function(d){var k=iso(d),on=!!h.days[k],fut=k>td,hs=habitState(h,k),rest=hs==='rest';if(on)c++;if(k<=td&&!rest){tot++;if(on)dn++}
+      return '<td><button class="dot'+(on?' on':'')+(fut?' future':'')+(rest?' rest':'')+'" data-act="hab" data-id="'+h.id+'" data-d="'+k+'" aria-pressed="'+on+'" aria-label="'+esc(h.name)+' '+k+(rest?' (rest day)':'')+'" title="'+(rest?'Rest day':'')+'">'+(rest?'<span class="restmark" aria-hidden="true">·</span>':'')+(on?'<svg class="ico" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" style="stroke-width:3"/></svg>':'')+'</button></td>'}).join('');
+    return '<tr data-row><td>'+(ui.editH?'<div class="row">'+grip('habits',h.name)+'<input type="text" value="'+esc(h.name)+'" data-chg="hname" data-id="'+h.id+'" aria-label="Habit name">'+'<select data-chg="hevery" data-id="'+h.id+'" aria-label="Repeat for '+esc(h.name)+'">'+EVERY.map(function(o){return '<option value="'+o[0]+'"'+(o[0]===ev?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select>'+delBtn('habit',h.id)+'</div>':esc(h.name)+(ev>1?'<div class="hint">'+everyLabel(ev).toLowerCase()+'</div>':''))+'</td>'+cells+'<td class="streak"><b>'+habitStreak(h)+'</b> '+(ev>1?'in a row':'day streak')+'<br>'+(ev>1?c+' this week':c+'/7 this week')+'</td></tr>';
   }).join('');
   return head('Habits &amp; streaks',label+(tot?' · '+Math.round(dn/tot*100)+'% complete so far':''),
     '<button class="btn ghost sm" data-act="week" data-d="-1">‹ Prev</button><button class="btn ghost sm" data-act="week" data-d="0">This week</button><button class="btn ghost sm" data-act="week" data-d="1">Next ›</button><button class="btn sm'+(ui.editH?'':' ghost')+'" data-act="editH">'+(ui.editH?'Done':'Edit habits')+'</button>')+
   '<div class="panel scroll">'+(S.habits.length?'<table class="hab"><thead><tr><th>Habit</th>'+days.map(function(d){return '<th class="'+(iso(d)===td?'today':'')+'">'+DOW[(d.getDay()+6)%7]+'<br>'+d.getDate()+'</th>'}).join('')+'<th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="empty">No habits yet. Add one below.</div>')+'</div>'+
-  '<div class="panel"><h3>Add a habit</h3><form data-form="habit" class="form"><input id="hn" type="text" maxlength="60" placeholder="e.g. Stretch for 10 minutes" required aria-label="New habit"><button class="btn" type="submit">Add</button></form></div>';
+  '<div class="panel"><h3>Add a habit</h3><form data-form="habit" class="form"><input id="hn" type="text" maxlength="60" placeholder="e.g. Stretch for 10 minutes" required aria-label="New habit"><select id="hev" aria-label="How often">'+EVERY.map(function(o){return '<option value="'+o[0]+'">'+o[1]+'</option>'}).join('')+'</select><button class="btn" type="submit">Add</button></form></div>';
 };
 
 V.calendar=function(){
@@ -822,8 +844,7 @@ V.body=function(){
 function weekStats(ws){
   var td=today(),dates=[],el=[],i;
   for(i=0;i<7;i++){var k=iso(addDays(ws,i));dates.push(k);if(k<=td)el.push(k)}
-  var hDone=0,per=S.habits.map(function(h){var c=el.filter(function(k){return h.days[k]}).length;hDone+=c;return {n:h.name,c:c}});
-  var hTot=S.habits.length*el.length;
+  var hDone=0,hTot=0,per=S.habits.map(function(h){var c=el.filter(function(k){return h.days[k]}).length,t=el.filter(function(k){return habitState(h,k)!=='rest'}).length;hDone+=c;hTot+=t;return {n:h.name,c:c,t:t}});
   var wk=S.workouts.filter(function(w){return dates.indexOf(w.date)>-1}),vol=0,sets=0;
   wk.forEach(function(w){w.entries.forEach(function(e){e.sets.forEach(function(s){sets++;vol+=s.w*s.r})})});
   var logged=el.filter(function(k){return kcalOn(k)>0}),kc=logged.reduce(function(a,k){return a+kcalOn(k)},0);
@@ -841,7 +862,7 @@ V.review=function(){
   var vs=function(a,b,unit,fmt){if(a==null||b==null)return '';var d=a-b;if(!d)return 'same as last week';return (d>0?'+':'−')+(fmt?fmt(Math.abs(d)):Math.abs(d))+(unit||'')+' vs last week'};
   var tile=function(lab,ico,big,sub,cmp){return '<div class="tile" style="cursor:default"><span class="lab">'+ic(ico)+lab+'</span><span class="big">'+big+'</span><span class="sub">'+sub+'</span>'+(cmp?'<span class="hint">'+cmp+'</span>':'')+'</div>'};
   var best=st.per.slice().sort(function(a,b){return b.c-a.c})[0];
-  var habits=st.per.length?'<div class="panel"><h3>Habit breakdown</h3><ul class="list">'+st.per.map(function(h){var p=st.el?Math.round(h.c/st.el*100):0;return '<li><span class="grow">'+esc(h.n)+'</span><span style="width:90px">'+bar(p)+'</span><span class="mono" style="width:44px;text-align:right">'+h.c+'/'+st.el+'</span></li>'}).join('')+'</ul></div>':'';
+  var habits=st.per.length?'<div class="panel"><h3>Habit breakdown</h3><ul class="list">'+st.per.map(function(h){var p=h.t?Math.round(h.c/h.t*100):0;return '<li><span class="grow">'+esc(h.n)+'</span><span style="width:90px">'+bar(p)+'</span><span class="mono" style="width:44px;text-align:right">'+h.c+'/'+h.t+'</span></li>'}).join('')+'</ul></div>':'';
   var cur=ui.revOff===0;
   return head('Weekly review',label+(cur&&st.el<7?' · '+st.el+' of 7 days so far':''),'<button class="btn ghost sm" data-act="rev" data-d="-1">‹ Prev</button><button class="btn ghost sm" data-act="rev" data-d="0">This week</button><button class="btn ghost sm" data-act="rev" data-d="1"'+(ui.revOff>=0?' disabled':'')+'>Next ›</button>')+
   '<div class="grid">'+
@@ -1193,7 +1214,7 @@ var F={
  },
  setup:function(){var u=$('#su').value.trim(),k=$('#sk').value.trim();var p;try{p=new URL(u);if(p.protocol!=='https:')throw 0}catch(e){toast('Enter the full https:// project URL.');return}D.saveConfig(p.origin,k);location.reload()},
  focus:function(f){var v=$('#fi').value.trim();if(v)S.todayFocus[today()]=v;else delete S.todayFocus[today()];save();toast('Focus saved.')},
- habit:function(){var v=$('#hn').value.trim();if(!v)return;S.habits.push({id:uid(),name:v,days:{}});save();render()},
+ habit:function(){var v=$('#hn').value.trim();if(!v)return;var h={id:uid(),name:v,days:{}},ev=+$('#hev').value;if(ev>1)h.every=ev;S.habits.push(h);save();render()},
  event:function(){var v=$('#ex').value.trim();if(!v)return;var ev={id:uid(),date:ui.sel,time:$('#et').value,title:v},r=$('#er').value;if(r)ev.rec=r;S.events.push(ev);save();render()},
  project:function(){var v=$('#pn').value.trim();if(!v)return;var p={id:uid(),name:v,tasks:[]};S.projects.push(p);ui.proj=p.id;save();render()},
  task:function(){var v=$('#tn').value.trim();if(!v)return;S.projects.filter(function(x){return x.id===ui.proj})[0].tasks.push({id:uid(),text:v,done:false});save();render()},
@@ -1226,6 +1247,7 @@ var F={
 };
 function clamp(v,a,b){v=Math.round(num(v));return Math.max(a,Math.min(b,v||a))}
 var C={
+ hevery:function(el){var h=S.habits.filter(function(x){return x.id===el.dataset.id})[0],v=+el.value;if(!h)return;if(v>1)h.every=v;else delete h.every;save();render()},
  hname:function(el){var h=S.habits.filter(function(x){return x.id===el.dataset.id})[0];if(el.value.trim())h.name=el.value.trim();save()},
  task:function(el){var p=S.projects.filter(function(x){return x.id===ui.proj})[0];p.tasks.filter(function(t){return t.id===el.dataset.id})[0].done=el.checked;save();render()},
  rname:function(el){S.routines[ui.planDay].name=el.value.trim();save();var n=$('.days [aria-pressed="true"] .n');if(n)n.textContent=el.value.trim()||'Rest'},
@@ -1339,7 +1361,7 @@ setInterval(function(){
   }
   paintMorning();
 },1000);
-function tick(){var d=new Date();var e=$('#clock');if(e)e.innerHTML=pad(d.getHours())+':'+pad(d.getMinutes())+'<span class="sec">:'+pad(d.getSeconds())+'</span>'}
+function tick(){var d=new Date();var td0=iso(d);if(ui.day&&ui.day!==td0){ui.day=td0;var ae=document.activeElement;if(!(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)))render()}var e=$('#clock');if(e)e.innerHTML=pad(d.getHours())+':'+pad(d.getMinutes())+'<span class="sec">:'+pad(d.getSeconds())+'</span>'}
 tick();setInterval(tick,1000);
 
 /* ---------- events ---------- */
@@ -1401,6 +1423,7 @@ window.addEventListener('hashchange',function(){setView(location.hash.replace('#
   applyTheme();
   var h=location.hash.replace('#','');ui.view=V[h]?h:'home';
   ui.t.remaining=S.focusCfg.focus*60;
+  ui.day=today();
   render();
   miniLoad();miniRender();
   if(D.start)D.start(window.CC);
