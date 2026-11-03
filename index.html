@@ -221,6 +221,8 @@ table.hab{border-collapse:collapse;width:100%;min-width:560px}
 .mrow.done .mark{color:var(--good)}.mrow.cur .mark{color:var(--accent)}
 .mrow.done .grow,.mrow.skip .grow{color:var(--muted);text-decoration:none}
 @media (max-width:520px){.mtime{display:none}}
+.exnote{font-size:13px;color:var(--muted);font-style:italic;margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;border-left:2px solid var(--accent);padding-left:8px;font-weight:400}
+.notebox{margin-top:8px}.notebox textarea{min-height:56px;margin:6px 0 10px}
 .toastbtn{margin-left:14px;background:none;border:1px solid currentColor;color:inherit;border-radius:4px;padding:2px 10px;font-weight:600;cursor:pointer}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:6px;font-size:14px;z-index:40;max-width:90vw}
 .focusline{display:flex;flex-direction:column;gap:6px}
@@ -467,11 +469,11 @@ function defaults(){
     habits:[{id:uid(),name:'Drink 3L water',days:{}},{id:uid(),name:'Read 20 minutes',days:{}},{id:uid(),name:'Train or walk',days:{}},{id:uid(),name:'In bed before 23:00',days:{}}],
     events:[],projects:[],routines:r,workouts:[],live:null,
     goal:3300,meals:{},books:[],notes:[],
-    focusCfg:{focus:25,short:5,long:15},sessions:{},todayFocus:{},miniMin:5,weights:{},wtarget:0,reviews:{},exlist:EXS.slice(),restSec:90,homeOrder:[],homeHide:[],navHide:[],barKg:20,plates:[25,20,15,10,5,2.5,1.25],savedMeals:[],morn:{start:'07:00',end:'08:30',steps:[{id:uid(),name:'Wake up and drink water',min:5},{id:uid(),name:'Stretch',min:10},{id:uid(),name:'Shower',min:15},{id:uid(),name:'Get dressed',min:10},{id:uid(),name:'Breakfast',min:20},{id:uid(),name:'Pack bag',min:5}]},mlog:{}};
+    focusCfg:{focus:25,short:5,long:15},sessions:{},todayFocus:{},miniMin:5,weights:{},wtarget:0,reviews:{},exlist:EXS.slice(),restSec:90,homeOrder:[],homeHide:[],navHide:[],barKg:20,plates:[25,20,15,10,5,2.5,1.25],savedMeals:[],exnotes:{},morn:{start:'07:00',end:'08:30',steps:[{id:uid(),name:'Wake up and drink water',min:5},{id:uid(),name:'Stretch',min:10},{id:uid(),name:'Shower',min:15},{id:uid(),name:'Get dressed',min:10},{id:uid(),name:'Breakfast',min:20},{id:uid(),name:'Pack bag',min:5}]},mlog:{}};
 }
 var S=defaults();
 function normalise(o){var d=defaults();for(var k in d){if(o[k]===undefined)o[k]=d[k]}for(var i=0;i<7;i++){if(!o.routines[i])o.routines[i]={name:'',ex:[]}}return o}
-var ui={view:'home',weekOff:0,cal:{y:new Date().getFullYear(),m:new Date().getMonth()},sel:iso(new Date()),proj:null,planDay:(new Date().getDay()+6)%7,calDate:iso(new Date()),editNote:null,noteQ:'',revOff:0,wRange:90,exMgr:false,homeEdit:false,plateW:0,plateEx:null,undo:null,exDetail:null,exMetric:'1rm',rest:{end:0},wDate:iso(new Date()),editH:false,confirm:null,sync:'Local only',importOpen:false,exportText:'',
+var ui={view:'home',weekOff:0,cal:{y:new Date().getFullYear(),m:new Date().getMonth()},sel:iso(new Date()),proj:null,planDay:(new Date().getDay()+6)%7,calDate:iso(new Date()),editNote:null,noteQ:'',revOff:0,wRange:90,exMgr:false,noteEx:null,noteR:null,homeEdit:false,plateW:0,plateEx:null,undo:null,exDetail:null,exMetric:'1rm',rest:{end:0},wDate:iso(new Date()),editH:false,confirm:null,sync:'Local only',importOpen:false,exportText:'',
   t:{mode:'focus',remaining:25*60,end:0,running:false}};
 /* ===== DATA ADAPTER BOUNDARY =====
    The UI never talks to a backend. It only calls window.CCData (see README.md):
@@ -718,7 +720,8 @@ V['gym-plan']=function(){
     '<p class="muted" style="margin:6px 0 0">Log what you lifted and tick each set. Ticking starts the rest timer. A star means a new personal record.</p>'+
     '<div class="form" style="margin-top:10px"><label class="hint" for="rsec">Rest between sets</label><input id="rsec" type="number" min="10" max="600" step="5" value="'+(S.restSec||90)+'" data-chg="restsec" style="width:80px" aria-label="Rest seconds"><span class="hint">seconds</span></div>'+
     S.live.entries.map(function(e,ei){var lp=lastPerf(e.name),sg=sugFor(e.name,e.tr||(e.sets[0]&&num(e.sets[0].r))||8);
-      return '<div style="margin-top:16px"><div class="row" style="justify-content:space-between"><strong>'+esc(e.name)+'</strong><span class="row"><span class="hint">'+(lp?'Last best: '+lp:'First time')+'</span><button class="btn ghost sm" data-act="plateex" data-ei="'+ei+'" aria-pressed="'+(ui.plateEx===ei)+'">Plates</button></span></div>'+
+      return '<div style="margin-top:16px"><div class="row" style="justify-content:space-between"><strong>'+esc(e.name)+'</strong><span class="row"><span class="hint">'+(lp?'Last best: '+lp:'First time')+'</span><button class="btn ghost sm" data-act="plateex" data-ei="'+ei+'" aria-pressed="'+(ui.plateEx===ei)+'">Plates</button><button class="btn ghost sm" data-act="exnotes" data-ei="'+ei+'" aria-pressed="'+(ui.noteEx===ei)+'">Notes'+((exNote(e.name)||e.note)?' •':'')+'</button></span></div>'+
+      (ui.noteEx===ei?'<div class="notebox"><label class="lab2" for="xn'+ei+'">Exercise note (always shown)</label><textarea id="xn'+ei+'" data-chg="exnote" data-n="'+esc(e.name)+'" placeholder="Setup or cues, e.g. seat 4, grip just outside shoulders">'+esc(exNote(e.name))+'</textarea><label class="lab2" for="sn'+ei+'">This session</label><textarea id="sn'+ei+'" data-chg="snote" data-ei="'+ei+'" placeholder="How it felt, pain, what to change next time">'+esc(e.note||'')+'</textarea></div>':(exNote(e.name)?'<div class="exnote">'+esc(exNote(e.name))+'</div>':'')+(e.note?'<div class="exnote">This session: '+esc(e.note)+'</div>':''))+
       (ui.plateEx===ei?'<div class="plateex">'+(function(){var ws=[];e.sets.forEach(function(x){var w=num(x.w);if(w>0&&ws.indexOf(w)<0)ws.push(w)});ws.sort(function(a,b){return a-b});return ws.length?ws.map(function(w){var r=plateSplit(w);return '<div class="hint"><b>'+w+' kg</b> → '+(r.err?esc(r.err):plateText(r)+(r.exact?'':' (closest '+fmtKg(r.total)+' kg)'))+'</div>'}).join(''):'<div class="hint">Enter a weight to see the plates.</div>'})()+'</div>':'')+
       (sg?'<div class="hint sug">'+esc(sg.text)+(sg.w!=null?' <button class="btn ghost sm" data-act="applysug" data-ei="'+ei+'" data-w="'+sg.w+'">Use '+sg.w+' kg</button>':'')+'</div>':'')+
       e.sets.map(function(s,si){return '<div class="setrow"><span class="mono '+(s.pr?'prstar':'muted')+'" title="'+(s.pr?'New personal record':'')+'">'+(s.pr?'★':(si+1))+'</span><input type="number" inputmode="decimal" step="0.5" min="0" placeholder="kg" value="'+(s.w===''?'':s.w)+'" data-chg="lw" data-ei="'+ei+'" data-si="'+si+'" aria-label="Weight, set '+(si+1)+'"><input type="number" inputmode="numeric" min="0" placeholder="reps" value="'+(s.r===''?'':s.r)+'" data-chg="lr" data-ei="'+ei+'" data-si="'+si+'" aria-label="Reps, set '+(si+1)+'"><input type="checkbox" '+(s.done?'checked':'')+' data-chg="ld" data-ei="'+ei+'" data-si="'+si+'" aria-label="Set done"></div>'}).join('')+
@@ -733,7 +736,7 @@ V['gym-plan']=function(){
   var opts=exList().map(function(x){return '<option>'+esc(x)+'</option>'}).join('');
   var ed='<div class="panel"><h3>'+['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][ui.planDay]+' routine</h3>'+
     '<div class="form"><input id="rn" type="text" maxlength="40" value="'+esc(rd.name)+'" placeholder="Routine name, e.g. Push day" data-chg="rname" aria-label="Routine name"></div>'+
-    (rd.ex.length?'<ul class="list" style="margin-top:8px">'+rd.ex.map(function(e){return '<li data-row>'+grip('routine',e.name)+'<span class="grow">'+esc(e.name)+'</span><input type="number" min="1" max="20" value="'+e.sets+'" data-chg="exsets" data-id="'+e.id+'" style="width:64px" aria-label="Sets"><span class="muted">×</span><input type="number" min="1" max="100" value="'+e.reps+'" data-chg="exreps" data-id="'+e.id+'" style="width:64px" aria-label="Reps"><button class="btn ghost sm" data-act="rmex" data-id="'+e.id+'" aria-label="Remove '+esc(e.name)+'">✕</button></li>'}).join('')+'</ul>':'<div class="empty" style="margin-top:8px">No exercises yet. Leave empty for a rest day.</div>')+
+    (rd.ex.length?'<ul class="list" style="margin-top:8px">'+rd.ex.map(function(e){return '<li data-row style="flex-wrap:wrap">'+grip('routine',e.name)+'<span class="grow">'+esc(e.name)+(exNote(e.name)?'<div class="exnote">'+esc(exNote(e.name))+'</div>':'')+'</span><input type="number" min="1" max="20" value="'+e.sets+'" data-chg="exsets" data-id="'+e.id+'" style="width:64px" aria-label="Sets"><span class="muted">×</span><input type="number" min="1" max="100" value="'+e.reps+'" data-chg="exreps" data-id="'+e.id+'" style="width:64px" aria-label="Reps"><button class="btn ghost sm" data-act="rnote" data-id="'+e.id+'" aria-pressed="'+(ui.noteR===e.id)+'" aria-label="Note for '+esc(e.name)+'">Note'+(exNote(e.name)?' •':'')+'</button><button class="btn ghost sm" data-act="rmex" data-id="'+e.id+'" aria-label="Remove '+esc(e.name)+'">✕</button>'+(ui.noteR===e.id?'<div class="notebox" style="flex-basis:100%"><textarea data-chg="exnote" data-n="'+esc(e.name)+'" placeholder="Setup or cues, e.g. seat 4, grip just outside shoulders" aria-label="Note for '+esc(e.name)+'">'+esc(exNote(e.name))+'</textarea></div>':'')+'</li>'}).join('')+'</ul>':'<div class="empty" style="margin-top:8px">No exercises yet. Leave empty for a rest day.</div>')+
     '<form data-form="addex" class="form" style="margin-top:14px"><select id="exsel" data-cust="excustom" aria-label="Exercise">'+opts+'<option value="__custom">Custom…</option></select><input id="excustom" type="text" maxlength="50" placeholder="Custom exercise name" aria-label="Custom exercise" hidden><button class="btn" type="submit">Add to routine</button><button class="btn ghost" type="button" data-act="exmgr" aria-pressed="'+ui.exMgr+'">'+(ui.exMgr?'Hide list editor':'Edit exercise list')+'</button></form>'+
     '<div class="row" style="margin-top:16px"><button class="btn" data-act="startlive"'+(rd.ex.length&&!S.live?'':' disabled style="opacity:.5;cursor:not-allowed"')+'>Start live workout</button>'+(S.live?'<span class="muted">Finish the current session first.</span>':'')+'</div></div>';
   return head('Weekly gym plan','Plan each day, then log it live.')+tabs+live+ed+plateCard()+mgr;
@@ -746,7 +749,7 @@ function exDetailView(){
   var best=h.reduce(function(a,x){return x.v>a.v?x:a},h[0]),heavy=h.reduce(function(a,x){return x.top>a.top?x:a},h[0]),prs=h.filter(function(x){return x.pr}).length,totVol=h.reduce(function(a,x){return a+x.vol},0);
   var tog=Object.keys(M).map(function(k){return '<button class="btn sm'+(ui.exMetric===k?'':' ghost')+'" data-act="exmetric" data-m="'+k+'" aria-pressed="'+(ui.exMetric===k)+'">'+M[k][0]+'</button>'}).join('');
   var dl=function(d){return parse(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})};
-  var rows=h.slice().reverse().map(function(x){return '<li style="flex-wrap:wrap"><span class="mono muted">'+x.d+'</span><span class="grow mono" style="font-size:13px">'+x.sets.map(function(q){return q.w+'×'+q.r}).join(', ')+'</span>'+(x.pr?'<span class="pill">PR</span>':'')+'<span class="hint">'+x.v.toFixed(1)+' kg</span></li>'}).join('');
+  var rows=h.slice().reverse().map(function(x){return '<li style="flex-wrap:wrap"><span class="mono muted">'+x.d+'</span><span class="grow mono" style="font-size:13px">'+x.sets.map(function(q){return q.w+'×'+q.r}).join(', ')+'</span>'+(x.pr?'<span class="pill">PR</span>':'')+'<span class="hint">'+x.v.toFixed(1)+' kg</span>'+(x.note?'<div class="exnote" style="flex-basis:100%">'+esc(x.note)+'</div>':'')+'</li>'}).join('');
   return head(esc(n),h.length+' session'+(h.length===1?'':'s')+' logged','<button class="btn ghost sm" data-act="exback">‹ All exercises</button>')+
   '<div class="grid">'+
    '<div class="tile" style="cursor:default"><span class="lab">Best est. 1RM</span><span class="big">'+best.v.toFixed(1)+'<span style="font-size:18px"> kg</span></span><span class="sub">'+dl(best.d)+'</span></div>'+
@@ -756,6 +759,7 @@ function exDetailView(){
   '</div>'+
   '<div class="panel"><div class="row" style="justify-content:space-between;margin-bottom:10px"><h3 style="margin:0">'+m[0]+' by session</h3><div class="row">'+tog+'</div></div>'+
    lineChart(h.map(function(x){return {k:x.d,v:m[1](x),pr:x.pr}}),'kg',m[0]+' over time')+'<div class="hint">Larger dots are personal records.</div></div>'+
+  '<div class="panel"><h3>Exercise note</h3><textarea data-chg="exnote" data-n="'+esc(n)+'" placeholder="Setup or cues, e.g. seat 4, grip just outside shoulders" aria-label="Note for '+esc(n)+'">'+esc(exNote(n))+'</textarea><p class="hint" style="margin:6px 0 0">Shown whenever you do this exercise. It saves when you tap away.</p></div>'+
   '<div class="panel"><h3>All sessions</h3><ul class="list">'+rows+'</ul></div>';
 }
 V['gym-stats']=function(){
@@ -934,6 +938,8 @@ V.focus=function(){
 function fmtT(s){s=Math.max(0,Math.ceil(s));return pad(Math.floor(s/60))+':'+pad(s%60)}
 
 /* ---------- gym helpers ---------- */
+function exNote(n){return (S.exnotes&&S.exnotes[n])||''}
+function setExNote(n,v){S.exnotes=S.exnotes||{};v=String(v||'').trim();if(v)S.exnotes[n]=v;else delete S.exnotes[n]}
 function exList(){return Array.isArray(S.exlist)?S.exlist:[]}
 function exHas(n){var l=n.toLowerCase();return exList().some(function(x){return x.toLowerCase()===l})}
 function exAdd(n){n=n.trim();if(n&&!exHas(n)){S.exlist=exList().concat(n);return true}return false}
@@ -943,7 +949,7 @@ function exHistory(name){
   var out=[];
   S.workouts.forEach(function(w,wi){w.entries.forEach(function(e){if(e.name!==name||!e.sets.length)return;
     var top=0,vol=0,v=0;e.sets.forEach(function(x){top=Math.max(top,x.w);vol+=x.w*x.r;v=Math.max(v,e1rm(x.w,x.r))});
-    out.push({d:w.date,i:wi,sets:e.sets,top:top,vol:vol,v:v,pr:false})})});
+    out.push({d:w.date,i:wi,sets:e.sets,top:top,vol:vol,v:v,pr:false,note:e.note||''})})});
   out.sort(function(a,b){return a.d<b.d?-1:a.d>b.d?1:a.i-b.i});
   var run=0;out.forEach(function(x,i){if(i>0&&run>0&&x.top>0&&x.v>run)x.pr=true;if(x.top>0)run=Math.max(run,x.v)});
   return out;
@@ -1128,6 +1134,8 @@ var A={
  mskip:function(){mAdvance(true)},
  mundolast:function(){var log=S.mlog[today()];if(!log)return;var last=null;S.morn.steps.forEach(function(x){if(log.steps[x.id])last=x});if(last)delete log.steps[last.id];log.fin=null;if(!last&&!Object.keys(log.steps).length)delete S.mlog[today()];save();render()},
  mreset:function(){ui.undo={snap:snapKeys(['mlog'])};delete S.mlog[today()];save();render();toast('Morning run cleared.',true)},
+ exnotes:function(el){var i=+el.dataset.ei;ui.noteEx=ui.noteEx===i?null:i;render()},
+ rnote:function(el){ui.noteR=ui.noteR===el.dataset.id?null:el.dataset.id;render()},
  exmgr:function(){ui.exMgr=!ui.exMgr;render()},
  exsort:function(){S.exlist=exList().slice().sort(function(a,b){return a.localeCompare(b)});save();render()},
  exdefaults:function(){var n=0;EXS.forEach(function(x){if(exAdd(x))n++});save();toast(n?n+' default exercise'+(n>1?'s':'')+' added.':'Nothing missing.');render()},
@@ -1140,7 +1148,7 @@ var A={
  addset:function(el){var e=S.live.entries[+el.dataset.ei];var l=e.sets[e.sets.length-1]||{w:'',r:8};e.sets.push({w:l.w,r:l.r,done:false});save();render()},
  cancellive:function(){if(ui.confirm==='live'){ui.confirm=null;S.live=null;ui.rest.end=0;save();render()}else{ui.confirm='live';render()}},
  finish:function(){
-  var entries=S.live.entries.map(function(e){return {name:e.name,sets:e.sets.filter(function(s){return (s.done||s.w!=='')&&num(s.r)>0}).map(function(s){return {w:num(s.w),r:num(s.r)}})}}).filter(function(e){return e.sets.length});
+  var entries=S.live.entries.map(function(e){var o={name:e.name,sets:e.sets.filter(function(s){return (s.done||s.w!=='')&&num(s.r)>0}).map(function(s){return {w:num(s.w),r:num(s.r)}})};if(e.note&&e.note.trim())o.note=e.note.trim();return o}).filter(function(e){return e.sets.length});
   if(!entries.length){toast('Log at least one set first.');return}
   var prs=0;entries.forEach(function(e){var run=histBest(e.name),base=run;e.sets.forEach(function(x){var v=e1rm(x.w,x.r);if(base>0&&x.w>0&&v>run)prs++;if(x.w>0)run=Math.max(run,v)})});
   var wo={id:uid(),date:today(),name:S.live.name,entries:entries,mins:Math.round((Date.now()-S.live.started)/60000)};if(prs)wo.prs=prs;
@@ -1271,12 +1279,15 @@ var C={
  mname:function(el){var x=S.morn.steps.filter(function(y){return y.id===el.dataset.id})[0];if(x&&el.value.trim())x.name=el.value.trim();save()},
  mmin:function(el){var x=S.morn.steps.filter(function(y){return y.id===el.dataset.id})[0];if(x){x.min=clamp(el.value,1,240);el.value=x.min;save();render()}},
  mtime:function(el){if(!el.value)return;S.morn[el.dataset.f]=el.value;save();render()},
+ exnote:function(el){setExNote(el.dataset.n,el.value);save()},
+ snote:function(el){var e=S.live&&S.live.entries[+el.dataset.ei];if(e){e.note=el.value.trim();save()}},
  restsec:function(el){S.restSec=clamp(el.value,10,600);el.value=S.restSec;save()},
  exren:function(el){
   var i=+el.dataset.i,old=exList()[i],nn=el.value.trim();
   if(!nn||nn===old){render();return}
   if(exList().some(function(x,j){return j!==i&&x.toLowerCase()===nn.toLowerCase()})){toast('That name is already in the list.');render();return}
   S.exlist=exList().slice();S.exlist[i]=nn;
+  if(S.exnotes&&S.exnotes[old]!==undefined){S.exnotes[nn]=S.exnotes[old];delete S.exnotes[old]}
   Object.keys(S.routines).forEach(function(d){S.routines[d].ex.forEach(function(x){if(x.name===old)x.name=nn})});
   S.workouts.forEach(function(w){w.entries.forEach(function(x){if(x.name===old)x.name=nn})});
   if(S.live)S.live.entries.forEach(function(x){if(x.name===old)x.name=nn});
