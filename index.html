@@ -50,10 +50,15 @@ h1,h2,h3{margin:0;font-family:var(--display);font-weight:800;letter-spacing:.02e
 h2{font-size:34px;text-transform:uppercase}
 h3{font-size:20px;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
 .wrap{max-width:1080px;margin:0 auto}
-.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line);
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:21;background:var(--bg);
   margin-inline:calc(-1*max(16px,env(safe-area-inset-left,0px))) calc(-1*max(16px,env(safe-area-inset-right,0px)));
   padding:10px max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px))}
 .top-in{max-width:1080px;margin:0 auto}
+.rl .short{display:none}
+.railbar{position:sticky;top:calc(env(safe-area-inset-top,0px) + var(--topH,52px));z-index:20;background:var(--bg);border-bottom:1px solid var(--line);transition:transform .22s ease;
+  margin-inline:calc(-1*max(16px,env(safe-area-inset-left,0px))) calc(-1*max(16px,env(safe-area-inset-right,0px)));
+  padding:6px max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px))}
+@media (prefers-reduced-motion:reduce){.railbar{transition:none}}
 .brandrow{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 .brand{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:.14em;text-transform:uppercase}
 .brand i{font-style:normal;color:var(--accent)}
@@ -74,12 +79,19 @@ h3{font-size:20px;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
   .minit button{width:26px;height:26px}
   .minit .mt{font-size:13px;min-width:46px}
   .clock{font-size:13px}.clock .sec{display:none}
-  .rail{margin-top:2px}
-  .rail button{padding:7px 9px;font-size:12.5px;gap:5px}
+  .railbar{padding-top:0}
+  .railbar .rail{display:grid;grid-template-columns:repeat(var(--cols,7),minmax(0,1fr));gap:2px;overflow:visible;margin-top:0;padding:4px 0 6px}
+  .railbar .rail button{flex-direction:column;justify-content:center;gap:2px;padding:5px 1px 4px;font-size:10px;letter-spacing:-.01em;border-bottom:0;border-radius:8px;min-width:0;overflow:hidden}
+  .railbar .rail button .ico{width:18px;height:18px}
+  .railbar .rail button .rl{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  .rl .full{display:none}.rl .short{display:inline}
+  .railbar .rail button[aria-current="page"]{background:var(--accent-soft,color-mix(in srgb,var(--accent) 12%,transparent));color:var(--accent)}
+  .railbar.hide{transform:translateY(-105%)}
 }
+@media (max-width:345px){.railbar .rail{grid-template-columns:repeat(var(--cols3,5),minmax(0,1fr))}}
 @media (max-width:345px){.brandrow{flex-wrap:wrap}.top-right{width:100%;justify-content:space-between}}
 @media (max-width:360px){.brand{font-size:12.5px;letter-spacing:.03em}.top-right{gap:5px}.minit .mt{min-width:40px;font-size:12px}.minit button{width:23px;height:23px}}
-.rail{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin-top:6px}
+.rail{display:flex;flex-wrap:wrap;gap:0 2px;scrollbar-width:none}
 .rail::-webkit-scrollbar{display:none}
 .rail button{flex:none;display:flex;align-items:center;gap:6px;background:none;border:0;border-bottom:2px solid transparent;padding:9px 11px;color:var(--muted);cursor:pointer;font-size:13px;font-weight:500;white-space:nowrap}
 .rail button:hover{color:var(--fg)}
@@ -244,8 +256,8 @@ table.hab{border-collapse:collapse;width:100%;min-width:560px}
 <body>
 <div class="top"><div class="top-in">
   <div class="brandrow"><div class="brand">Command<i>/</i>Centre</div><div class="top-right"><div class="minit" id="mini" role="group" aria-label="Quick timer"></div><div class="clock" id="clock">--:--</div></div></div>
-  <nav class="rail" id="rail" aria-label="Modules"></nav>
 </div></div>
+<div class="railbar" id="railbar"><div class="top-in"><nav class="rail" id="rail" aria-label="Modules"></nav></div></div>
 <div class="wrap"><main id="app"></main></div>
 <div id="toast" class="toast" hidden></div>
 
@@ -456,7 +468,7 @@ var ICONS={
  prefs:'<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>'
 };
 var ic=function(n){return '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">'+ICONS[n]+'</svg>'};
-var MODS=[['home','Home'],['habits','Habits'],['morning','Morning'],['calendar','Calendar'],['projects','Projects'],['gym-plan','Gym Plan'],['gym-stats','Gym Stats'],['calories','Calories'],['body','Weight'],['books','Books'],['notes','Notes'],['focus','Focus'],['review','Review'],['prefs','Settings']];
+var MODS=[['home','Home'],['habits','Habits'],['morning','Morning'],['calendar','Calendar'],['projects','Projects'],['gym-plan','Gym Plan','Workout'],['gym-stats','Gym Stats','Lifts'],['calories','Calories'],['body','Weight'],['books','Books'],['notes','Notes'],['focus','Focus'],['review','Review'],['prefs','Settings']];
 
 var QUOTES=['Do the next small thing well.','Consistency beats intensity.','Protect the first hour.','One clear priority is enough.','Make it easy to start.','Finish what is already open.','Sleep is training too.','Show up, then adjust.','Slow is smooth, smooth is fast.','Write it down, then let it go.','Progress is quiet and cumulative.','Remove one obstacle today.','Ship the draft.','Rest is part of the plan.'];
 var EXS=['Barbell Bench Press','Incline Dumbbell Press','Barbell Back Squat','Conventional Deadlift','Overhead Press','Lat Pulldown','Machine Barbell Row','Dumbbell Bicep Curl','Tricep Cable Pushdown','Leg Press','Romanian Deadlift','Pull-up','Lateral Raise','Walking Lunge'];
@@ -1087,7 +1099,9 @@ V.prefs=function(){
 /* ---------- render ---------- */
 function renderRail(){
   var nh=S.navHide||[];
-  $('#rail').innerHTML=MODS.filter(function(m){return nh.indexOf(m[0])<0||ui.view===m[0]}).map(function(m){return '<button data-act="nav" data-v="'+m[0]+'"'+(ui.view===m[0]?' aria-current="page"':'')+'>'+ic(m[0])+m[1]+'</button>'}).join('');
+  var list=MODS.filter(function(m){return nh.indexOf(m[0])<0||ui.view===m[0]}),r=$('#rail');
+  r.innerHTML=list.map(function(m){return '<button data-act="nav" data-v="'+m[0]+'"'+(ui.view===m[0]?' aria-current="page"':'')+'>'+ic(m[0])+'<span class="rl">'+(m[2]?'<span class="full">'+m[1]+'</span><span class="short">'+m[2]+'</span>':m[1])+'</span></button>'}).join('');
+  r.style.setProperty('--cols',Math.ceil(list.length/2));r.style.setProperty('--cols3',Math.ceil(list.length/3));
 }
 function render(){
   var f=V[ui.view]||V.home;
@@ -1372,6 +1386,13 @@ setInterval(function(){
   }
   paintMorning();
 },1000);
+(function(){
+  var bar=$('#railbar'),top=document.querySelector('.top'),last=window.scrollY||0;
+  function setH(){document.documentElement.style.setProperty('--topH',top.offsetHeight+'px')}
+  setH();window.addEventListener('resize',setH);if(window.ResizeObserver)new ResizeObserver(setH).observe(top);
+  window.addEventListener('scroll',function(){var y=window.scrollY||0,dy=y-last;if(y<60||dy<-6)bar.classList.remove('hide');else if(dy>8&&y>140)bar.classList.add('hide');last=y},{passive:true});
+  bar.addEventListener('focusin',function(){bar.classList.remove('hide')});
+})();
 function tick(){var d=new Date();var td0=iso(d);if(ui.day&&ui.day!==td0){ui.day=td0;var ae=document.activeElement;if(!(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)))render()}var e=$('#clock');if(e)e.innerHTML=pad(d.getHours())+':'+pad(d.getMinutes())+'<span class="sec">:'+pad(d.getSeconds())+'</span>'}
 tick();setInterval(tick,1000);
 
@@ -1425,7 +1446,7 @@ document.addEventListener('keydown',function(e){
   if(j<0||j>=rows.length)return;var kind=g.dataset.grip;reorder(kind,i,j);
   var gs=document.querySelectorAll('[data-grip="'+kind+'"]');if(gs[j])gs[j].focus();
 });
-function setView(v){if(!V[v])v='home';if(v!=='gym-stats')ui.exDetail=null;ui.view=v;ui.confirm=null;render();window.scrollTo(0,0)}
+function setView(v){var rb=$('#railbar');if(rb)rb.classList.remove('hide');if(!V[v])v='home';if(v!=='gym-stats')ui.exDetail=null;ui.view=v;ui.confirm=null;render();window.scrollTo(0,0)}
 window.addEventListener('hashchange',function(){setView(location.hash.replace('#','')||'home')});
 
 /* ---------- boot ---------- */
