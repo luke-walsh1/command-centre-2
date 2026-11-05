@@ -4,7 +4,9 @@ command centre claude
 
 url- https://ctpgfenlqvzgfhcveovi.supabase.co
 
-publishable key-sb_publishable_qDLp-eHYmQ2rz_3TsAycGw_f3sUta5H
+publishable key-
+
+sb_publishable_qDLp-eHYmQ2rz_3TsAycGw_f3sUta5H
 
 ## Supabase setup
 1. Supabase > SQL Editor > run `supabase-setup.sql` (creates the `dashboard_state` table with row level security).
