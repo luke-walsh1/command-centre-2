@@ -235,6 +235,15 @@ table.hab{border-collapse:collapse;width:100%;min-width:560px}
 @media (max-width:520px){.mtime{display:none}}
 .exnote{font-size:13px;color:var(--muted);font-style:italic;margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;border-left:2px solid var(--accent);padding-left:8px;font-weight:400}
 .notebox{margin-top:8px}.notebox textarea{min-height:56px;margin:6px 0 10px}
+.prow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.prow .ptime{width:48px;flex:none;color:var(--muted);font-size:13px}
+.prow.done .grow{text-decoration:line-through;color:var(--muted)}
+.prow.blk{color:var(--muted)}
+.prow.cur{background:color-mix(in srgb,var(--accent) 9%,transparent);border-left:3px solid var(--accent);padding-left:8px;border-radius:6px}
+.prow input[type=checkbox]{flex:none}
+.gapli{padding:0 0 0 56px;list-style:none;border:0}
+.nowline{display:flex;align-items:center;gap:8px;color:var(--accent);font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;border:0;padding:2px 0;list-style:none}
+.nowline::before,.nowline::after{content:"";flex:1;height:1px;background:var(--accent)}
 .toastbtn{margin-left:14px;background:none;border:1px solid currentColor;color:inherit;border-radius:4px;padding:2px 10px;font-weight:600;cursor:pointer}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:6px;font-size:14px;z-index:40;max-width:90vw}
 .focusline{display:flex;flex-direction:column;gap:6px}
@@ -457,6 +466,7 @@ var ICONS={
  projects:'<path d="M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5"/>',
  'gym-plan':'<path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/>',
  'gym-stats':'<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>',
+ planner:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
  calories:'<path d="M12 3c3 4 6 6 6 10a6 6 0 0 1-12 0c0-2 1-3 2-4 .5 2 1.5 2.5 2.5 2.5C10 9 10.5 6 12 3z"/>',
  books:'<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5zM4 19a2 2 0 0 0 2 2h13"/>',
  notes:'<path d="M5 3h10l4 4v14H5zM14 3v5h5M8 13h8M8 17h6"/>',
@@ -468,7 +478,7 @@ var ICONS={
  prefs:'<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>'
 };
 var ic=function(n){return '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">'+ICONS[n]+'</svg>'};
-var MODS=[['home','Home'],['habits','Habits'],['morning','Morning'],['calendar','Calendar'],['projects','Projects'],['gym-plan','Gym Plan','Workout'],['gym-stats','Gym Stats','Lifts'],['calories','Calories'],['body','Weight'],['books','Books'],['notes','Notes'],['focus','Focus'],['review','Review'],['prefs','Settings']];
+var MODS=[['home','Home'],['habits','Habits'],['morning','Morning'],['calendar','Calendar'],['projects','Projects'],['gym-plan','Gym Plan','Workout'],['gym-stats','Gym Stats','Lifts'],['planner','Planner'],['body','Weight'],['books','Books'],['notes','Notes'],['focus','Focus'],['review','Review'],['prefs','Settings']];
 
 var QUOTES=['Do the next small thing well.','Consistency beats intensity.','Protect the first hour.','One clear priority is enough.','Make it easy to start.','Finish what is already open.','Sleep is training too.','Show up, then adjust.','Slow is smooth, smooth is fast.','Write it down, then let it go.','Progress is quiet and cumulative.','Remove one obstacle today.','Ship the draft.','Rest is part of the plan.'];
 var EXS=['Barbell Bench Press','Incline Dumbbell Press','Barbell Back Squat','Conventional Deadlift','Overhead Press','Lat Pulldown','Machine Barbell Row','Dumbbell Bicep Curl','Tricep Cable Pushdown','Leg Press','Romanian Deadlift','Pull-up','Lateral Raise','Walking Lunge'];
@@ -481,11 +491,11 @@ function defaults(){
     habits:[{id:uid(),name:'Drink 3L water',days:{}},{id:uid(),name:'Read 20 minutes',days:{}},{id:uid(),name:'Train or walk',days:{}},{id:uid(),name:'In bed before 23:00',days:{}}],
     events:[],projects:[],routines:r,workouts:[],live:null,
     goal:3300,meals:{},books:[],notes:[],
-    focusCfg:{focus:25,short:5,long:15},sessions:{},todayFocus:{},miniMin:5,weights:{},wtarget:0,reviews:{},exlist:EXS.slice(),restSec:90,homeOrder:[],homeHide:[],navHide:[],barKg:20,plates:[25,20,15,10,5,2.5,1.25],savedMeals:[],exnotes:{},morn:{start:'07:00',end:'08:30',steps:[{id:uid(),name:'Wake up and drink water',min:5},{id:uid(),name:'Stretch',min:10},{id:uid(),name:'Shower',min:15},{id:uid(),name:'Get dressed',min:10},{id:uid(),name:'Breakfast',min:20},{id:uid(),name:'Pack bag',min:5}]},mlog:{}};
+    focusCfg:{focus:25,short:5,long:15},sessions:{},todayFocus:{},miniMin:5,weights:{},wtarget:0,reviews:{},exlist:EXS.slice(),restSec:90,homeOrder:[],homeHide:[],navHide:[],barKg:20,plates:[25,20,15,10,5,2.5,1.25],savedMeals:[],exnotes:{},plan:{},planRoll:{},morn:{start:'07:00',end:'08:30',steps:[{id:uid(),name:'Wake up and drink water',min:5},{id:uid(),name:'Stretch',min:10},{id:uid(),name:'Shower',min:15},{id:uid(),name:'Get dressed',min:10},{id:uid(),name:'Breakfast',min:20},{id:uid(),name:'Pack bag',min:5}]},mlog:{}};
 }
 var S=defaults();
 function normalise(o){var d=defaults();for(var k in d){if(o[k]===undefined)o[k]=d[k]}for(var i=0;i<7;i++){if(!o.routines[i])o.routines[i]={name:'',ex:[]}}return o}
-var ui={view:'home',weekOff:0,cal:{y:new Date().getFullYear(),m:new Date().getMonth()},sel:iso(new Date()),proj:null,planDay:(new Date().getDay()+6)%7,calDate:iso(new Date()),editNote:null,noteQ:'',revOff:0,wRange:90,exMgr:false,noteEx:null,noteR:null,homeEdit:false,plateW:0,plateEx:null,undo:null,exDetail:null,exMetric:'1rm',rest:{end:0},wDate:iso(new Date()),editH:false,confirm:null,sync:'Local only',importOpen:false,exportText:'',
+var ui={view:'home',weekOff:0,cal:{y:new Date().getFullYear(),m:new Date().getMonth()},sel:iso(new Date()),proj:null,planDay:(new Date().getDay()+6)%7,calDate:iso(new Date()),editNote:null,noteQ:'',revOff:0,wRange:90,exMgr:false,pDate:iso(new Date()),pEdit:null,pNote:{},pMin:-1,noteEx:null,noteR:null,homeEdit:false,plateW:0,plateEx:null,undo:null,exDetail:null,exMetric:'1rm',rest:{end:0},wDate:iso(new Date()),editH:false,confirm:null,sync:'Local only',importOpen:false,exportText:'',
   t:{mode:'focus',remaining:25*60,end:0,running:false}};
 /* ===== DATA ADAPTER BOUNDARY =====
    The UI never talks to a backend. It only calls window.CCData (see README.md):
@@ -550,6 +560,7 @@ function mv(a,f,t){var x=a.splice(f,1)[0];a.splice(t,0,x)}
 var R={
  habits:function(f,t){mv(S.habits,f,t)},
  morn:function(f,t){mv(S.morn.steps,f,t)},
+ plan:function(f,t){var k=ui.pDate||today(),all=pGet(k),un=all.filter(function(x){return !x.time}),tm=all.filter(function(x){return x.time});mv(un,f,t);S.plan[k]=tm.concat(un)},
  home:function(f,t){var o=homeOrder();mv(o,f,t);S.homeOrder=o},
  routine:function(f,t){mv(S.routines[ui.planDay].ex,f,t)},
  exlist:function(f,t){S.exlist=exList().slice();mv(S.exlist,f,t)}
@@ -559,8 +570,8 @@ function grip(kind,label){return '<button type="button" class="grip" data-grip="
 
 /* ---------- helpers ---------- */
 function toast(m,undo){var t=$('#toast');t.textContent=m;if(undo){var b=document.createElement('button');b.type='button';b.className='toastbtn';b.dataset.act='undo';b.textContent='Undo';t.appendChild(b)}else ui.undo=null;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){t.hidden=true;ui.undo=null},undo?6000:2200)}
-var UNDO_KEYS={mstep:['morn'],mlog:['mlog'],habit:['habits'],event:['events'],skip:['events'],project:['projects'],task:['projects'],workout:['workouts'],meal:['meals'],book:['books'],note:['notes'],exlist:['exlist'],weight:['weights'],savedmeal:['savedMeals']};
-var UNDO_LABEL={mstep:'Step deleted.',mlog:'Morning run cleared.',habit:'Habit deleted.',event:'Event deleted.',skip:'Day skipped.',project:'Project deleted.',task:'Task deleted.',workout:'Workout deleted.',meal:'Meal deleted.',book:'Book deleted.',note:'Note deleted.',exlist:'Exercise removed from list.',weight:'Weigh-in deleted.',savedmeal:'Saved meal removed.'};
+var UNDO_KEYS={ptask:['plan'],mstep:['morn'],mlog:['mlog'],habit:['habits'],event:['events'],skip:['events'],project:['projects'],task:['projects'],workout:['workouts'],meal:['meals'],book:['books'],note:['notes'],exlist:['exlist'],weight:['weights'],savedmeal:['savedMeals']};
+var UNDO_LABEL={ptask:'Task deleted.',mstep:'Step deleted.',mlog:'Morning run cleared.',habit:'Habit deleted.',event:'Event deleted.',skip:'Day skipped.',project:'Project deleted.',task:'Task deleted.',workout:'Workout deleted.',meal:'Meal deleted.',book:'Book deleted.',note:'Note deleted.',exlist:'Exercise removed from list.',weight:'Weigh-in deleted.',savedmeal:'Saved meal removed.'};
 function snapKeys(keys){var o={};keys.forEach(function(k){o[k]=JSON.parse(JSON.stringify(S[k]))});return o}
 function offerUndo(keys,msg){ui.undo={snap:snapKeys(keys)};return msg}
 function asked(key){if(ui.confirm===key){ui.confirm=null;return true}ui.confirm=key;render();return false}
@@ -586,7 +597,7 @@ function occursOn(e,k){
   return false;
 }
 function eventsOn(k){return S.events.filter(function(e){return occursOn(e,k)}).sort(function(a,b){return (a.time||'').localeCompare(b.time||'')})}
-var HOME_TILES=[['habits','Habits today'],['morning','Morning routine'],['calories','Calories left'],['event','Next event'],['projects','Projects'],['training','Training'],['focus','Focus sessions'],['weight','Weight'],['books','Reading'],['notes','Notes']];
+var HOME_TILES=[['habits','Habits today'],['morning','Morning routine'],['planner',"Today's plan"],['event','Next event'],['projects','Projects'],['training','Training'],['focus','Focus sessions'],['weight','Weight'],['books','Reading'],['notes','Notes']];
 function homeOrder(){var o=(S.homeOrder||[]).filter(function(id){return HOME_TILES.some(function(t){return t[0]===id})});HOME_TILES.forEach(function(t){if(o.indexOf(t[0])<0)o.push(t[0])});return o}
 function homeGridHtml(tiles){
   var hide=S.homeHide||[],list=homeOrder().filter(function(id){return hide.indexOf(id)<0});
@@ -661,7 +672,9 @@ V.home=function(){
      if(st.started&&st.cur)return tile('morning','morning','Morning routine','Step '+(st.curIdx+1)+'/'+m.steps.length,st.text);
      return tile('morning','morning','Morning routine',m.steps.length?mClock(st.startBy):'Set up',m.steps.length?(st.text||'Latest start to be ready by '+esc(m.end)):'Add your steps')})(),
    habits:tile('habits','habits','Habits today',hd+'/'+ht,ht?(hd===ht?'All done. Nice.':(ht-hd)+' to go'):(S.habits.length?'Rest day. Nothing due.':'No habits yet'),bar(ht?hd/ht*100:0)),
-   calories:tile('calories','calories','Calories left',fmtN(Math.max(rem,0)),fmtN(kc)+' of '+fmtN(S.goal)+' kcal eaten',bar(kc/S.goal*100,kc>S.goal)),
+   planner:(function(){var tk=today(),ts=pGet(tk),dn=ts.filter(function(t){return t.done}).length,pn=pNext(tk,nowMin()),sub;
+     if(!ts.length)sub='Nothing planned yet';else if(pn.cur)sub='Now: '+pn.cur.title;else if(pn.next)sub='Next: '+pn.next.time+' '+pn.next.title;else sub=dn===ts.length?'All done for today':'No more timed tasks';
+     return tile('planner','planner',"Today's plan",ts.length?(ts.length-dn)+' left':'–',esc(sub),ts.length?bar(dn/ts.length*100):'')})(),
    event:tile('calendar','calendar','Next event',ev?esc(ev.time||'All day'):'None',ev?esc(ev.title)+' · '+parse(ev.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'Nothing scheduled'),
    projects:tile('projects','projects','Projects',act.length,S.projects.length?avg+'% average completion':'Create your first project',bar(avg)),
    training:tile('gym-plan','gym-plan','Training',rt.name?esc(rt.name):'Rest',(rt.ex.length?rt.ex.length+' exercises planned':'No routine set')+' · '+wk+' session'+(wk===1?'':'s')+' this week'),
@@ -868,8 +881,9 @@ function weekStats(ws){
   var evn=dates.reduce(function(a,k){return a+eventsOn(k).length},0);
   var inW=wKeys().filter(function(k){return dates.indexOf(k)>-1}),wc=null,wnow=null;
   if(inW.length){wnow=S.weights[inW[inW.length-1]];var b=wOnOrBefore(iso(addDays(ws,-1)));wc=b?wnow-b.v:(inW.length>1?wnow-S.weights[inW[0]]:null)}
+  var pTot=0,pDone=0;dates.forEach(function(k){pGet(k).forEach(function(t){pTot++;if(t.done)pDone++})});
   var mRan=0,mOn=0;dates.forEach(function(k){var l=S.mlog[k];if(l&&l.fin){mRan++;if(l.late<=0)mOn++}});
-  return {mRan:mRan,mOn:mOn,dates:dates,el:el.length,hDone:hDone,hTot:hTot,hPct:hTot?Math.round(hDone/hTot*100):null,per:per,wk:wk.length,sets:sets,vol:vol,logged:logged.length,avgKc:logged.length?Math.round(kc/logged.length):null,foc:foc,evn:evn,wnow:wnow,wc:wc};
+  return {pTot:pTot,pDone:pDone,mRan:mRan,mOn:mOn,dates:dates,el:el.length,hDone:hDone,hTot:hTot,hPct:hTot?Math.round(hDone/hTot*100):null,per:per,wk:wk.length,sets:sets,vol:vol,logged:logged.length,avgKc:logged.length?Math.round(kc/logged.length):null,foc:foc,evn:evn,wnow:wnow,wc:wc};
 }
 V.review=function(){
   var ws=addDays(mondayOf(new Date()),ui.revOff*7),key=iso(ws),r=S.reviews[key]||{};
@@ -884,7 +898,7 @@ V.review=function(){
   '<div class="grid">'+
    tile('Habits','habits',st.hPct==null?'–':st.hPct+'%',st.hTot?st.hDone+' of '+st.hTot+' check-ins'+(best&&best.c?' · best: '+esc(best.n):''):'No habits yet',vs(st.hPct,pv.hPct,' pts'))+
    tile('Training','gym-plan',st.wk,st.wk?fmtN(st.vol)+' kg volume · '+st.sets+' sets':'No sessions logged',vs(st.wk,pv.wk,'',null))+
-   tile('Calories','calories',st.avgKc==null?'–':fmtN(st.avgKc),st.avgKc==null?'Nothing logged':'avg kcal over '+st.logged+' logged day'+(st.logged===1?'':'s')+' · goal '+fmtN(S.goal),'')+
+   tile('Planner','planner',st.pTot?st.pDone+'/'+st.pTot:'–',st.pTot?'planned tasks done':'Nothing planned','')+
    tile('Weight','body',st.wnow==null?'–':fmtKg(st.wnow)+'<span style="font-size:18px"> kg</span>',st.wc==null?(st.wnow==null?'No weigh-ins':'One weigh-in'):(st.wc>0?'+':'')+fmtKg(st.wc)+' kg this week','')+
    tile('Mornings','morning',st.mRan?st.mOn+'/'+st.mRan:'–',st.mRan?'ready on time':'No routines finished','')+
    tile('Focus sessions','focus',st.foc,st.foc?'completed':'None this week',vs(st.foc,pv.foc,'',null))+
@@ -921,6 +935,35 @@ V.morning=function(){
    '<p class="'+(buf<0?'':'muted')+'" style="margin:10px 0;'+(buf<0?'color:var(--bad)':'')+'">'+total+' min of steps in a '+Math.max(win,0)+' min window. '+(win<=0?'Set a ready-by time after your start.':buf>=0?'That leaves '+buf+' min of buffer.':'That is '+(-buf)+' min too much.')+'</p>'+
    plan+
    '<form data-form="mstep" class="form" style="margin-top:12px"><input id="mn2" type="text" maxlength="50" placeholder="New step, e.g. Make coffee" required aria-label="New step"><input id="mm2" type="number" min="1" max="240" value="5" style="width:80px" aria-label="Minutes"><span class="hint">min</span><button class="btn" type="submit">Add step</button></form></div>';
+};
+V.planner=function(){
+  var k=ui.pDate||today(),isToday=k===today(),nm=nowMin(),tasks=pGet(k),total=tasks.length,done=tasks.filter(function(t){return t.done}).length;
+  var label=parse(k).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  var prev=iso(addDays(parse(k),-1)),left=isToday&&!S.planRoll[prev]?pGet(prev).filter(function(t){return !t.done}):[];
+  var roll=left.length?'<div class="panel"><div class="row" style="justify-content:space-between"><span>'+left.length+' unfinished from yesterday: '+esc(left.slice(0,2).map(function(t){return t.title}).join(', '))+(left.length>2?' and more':'')+'.</span><span class="row"><button class="btn sm" data-act="proll">Move to today</button><button class="btn ghost sm" data-act="prolldis">Dismiss</button></span></div></div>':'';
+  var pn=isToday?pNext(k,nm):{cur:null,next:null},line='';
+  if(isToday){line=pn.cur?'Now: <b>'+esc(pn.cur.title)+'</b> until '+pFmt(hm(pn.cur.time)+pn.cur.dur):pn.next?'Next: <b>'+esc(pn.next.time+' '+pn.next.title)+'</b> in '+durText(hm(pn.next.time)-nm):(total&&done===total?'All done for today.':total?'Nothing else scheduled.':'Nothing planned yet. Add your first task below.')}
+  var status=total||isToday?'<div class="panel"><div class="row" style="justify-content:space-between;margin-bottom:8px"><span>'+(isToday?line:(total?done+' of '+total+' done':'Nothing planned'))+'</span><span class="mono muted">'+done+'/'+total+'</span></div>'+bar(total?done/total*100:0)+'</div>':'';
+  var any=tasks.filter(function(t){return !t.time}),allday=eventsOn(k).filter(function(e){return !e.time});
+  var anyHtml=(any.length||allday.length)?'<div class="panel"><h3>Anytime</h3><ul class="list">'+allday.map(function(e){return '<li class="prow blk"><span class="tag">Event</span><span class="grow">'+esc(e.title)+'</span></li>'}).join('')+any.map(function(t){return pRow(t,{grip:true})}).join('')+'</ul></div>':'';
+  var items=pItems(k),html='',nowDone=!isToday,prevIt=null;
+  items.forEach(function(it){
+    if(prevIt&&prevIt.end>prevIt.start&&it.start-prevIt.end>=30)html+='<li class="gapli"><span class="tag">'+durText(it.start-prevIt.end)+' free</span></li>';
+    if(!nowDone&&it.start>nm){html+='<li class="nowline"><span>Now '+pFmt(nm)+'</span></li>';nowDone=true}
+    var cur=isToday&&it.start<=nm&&nm<it.end;
+    if(it.kind==='task')html+=pRow(it.t,{lead:'<span class="mono ptime">'+esc(it.t.time)+'</span>',cur:cur&&!it.t.done});
+    else if(it.kind==='event')html+='<li class="prow blk"><span class="mono ptime">'+esc(it.e.time)+'</span><span class="tag">Event</span><span class="grow">'+esc(it.e.title)+'</span></li>';
+    else html+='<li class="prow blk'+(cur?' cur':'')+'"><span class="mono ptime">'+pFmt(it.start)+'</span><span class="grow">Morning routine <span class="hint">until '+pFmt(it.end)+'</span></span><button class="btn ghost sm" data-act="nav" data-v="morning">Open</button></li>';
+    prevIt=it;
+  });
+  if(!nowDone&&items.length)html+='<li class="nowline"><span>Now '+pFmt(nm)+'</span></li>';
+  var sched=html?'<div class="panel"><h3>Schedule</h3><ul class="list plist">'+html+'</ul></div>':'';
+  var empty=!anyHtml&&!sched?'<div class="panel"><div class="empty">Nothing planned for this day. Add a task with a time to build your schedule, or without one to keep it in Anytime.</div></div>':'';
+  return head('Daily planner',label+(isToday?' · Today':''),'<button class="btn ghost sm" data-act="pday" data-d="-1" aria-label="Previous day">‹</button><button class="btn ghost sm" data-act="pday" data-d="0">Today</button><button class="btn ghost sm" data-act="pday" data-d="1" aria-label="Next day">›</button>')+
+  roll+status+
+  '<div class="panel"><form data-form="ptask" class="form"><input id="pt" type="text" maxlength="80" placeholder="Add a task or block" required aria-label="Task"><input id="ptm" type="time" aria-label="Time (optional)"><select id="pd" aria-label="Length">'+PDUR.map(function(o){return '<option value="'+o[0]+'">'+o[1]+'</option>'}).join('')+'</select><button class="btn" type="submit">Add</button></form><p class="hint" style="margin:8px 0 0">Leave the time empty to keep it in Anytime. Tasks with a time appear in your schedule and remind you when it starts.</p></div>'+
+  anyHtml+sched+empty+
+  (done?'<div class="row"><button class="btn ghost sm" data-act="pclear">Clear '+done+' done task'+(done===1?'':'s')+'</button></div>':'');
 };
 V.books=function(){
   return head('Book tracker',S.books.filter(function(b){return b.cur>=b.pages&&b.pages}).length+' finished · '+S.books.filter(function(b){return b.cur<b.pages}).length+' in progress')+
@@ -975,6 +1018,36 @@ function sugFor(name,tr){
   if(hit){var w=top+(top>=20?2.5:1);return {text:'You hit '+tr+' reps at '+top+' kg last time. Try '+w+' kg × '+tr+'.',w:w}}
   return {text:'Aim for '+tr+' reps at '+top+' kg before adding weight.',w:top};
 }
+/* ---------- daily planner ---------- */
+var PDUR=[[0,'No length'],[15,'15 min'],[30,'30 min'],[45,'45 min'],[60,'1 hour'],[90,'1.5 hours'],[120,'2 hours'],[180,'3 hours']];
+function pGet(k){return S.plan[k]||[]}
+function pFmt(m){m=((m%1440)+1440)%1440;return pad(Math.floor(m/60))+':'+pad(m%60)}
+function durText(m){var h=Math.floor(m/60),r=m%60;return h?(r?h+'h '+r+'m':h+'h'):r+'m'}
+function nowMin(){var d=new Date();return d.getHours()*60+d.getMinutes()}
+function pItems(k){
+  var out=[];
+  pGet(k).forEach(function(t){if(t.time)out.push({kind:'task',t:t,start:hm(t.time),end:hm(t.time)+(t.dur||0)})});
+  eventsOn(k).forEach(function(e){if(e.time)out.push({kind:'event',e:e,start:hm(e.time),end:hm(e.time)})});
+  if(S.morn.steps.length)out.push({kind:'morning',start:hm(S.morn.start),end:hm(S.morn.end)});
+  return out.sort(function(a,b){return a.start-b.start||a.end-b.end});
+}
+function pNext(k,nm){
+  var cur=null,next=null;
+  pGet(k).filter(function(t){return t.time&&!t.done}).sort(function(a,b){return hm(a.time)-hm(b.time)}).forEach(function(t){
+    var st=hm(t.time),en=st+(t.dur||0);
+    if(!cur&&t.dur&&st<=nm&&nm<en)cur=t;
+    else if(!next&&st>nm)next=t;
+  });
+  return {cur:cur,next:next};
+}
+function pRow(t,opts){
+  var ed=ui.pEdit===t.id,k=ui.pDate||today();
+  var editor=ed?'<div class="pedit form" style="flex-basis:100%;margin-top:6px"><input type="text" maxlength="80" value="'+esc(t.title)+'" data-chg="ptitle" data-id="'+t.id+'" aria-label="Task title" style="flex:1 1 160px;min-width:0"><input type="time" value="'+esc(t.time||'')+'" data-chg="ptime" data-id="'+t.id+'" aria-label="Time"><select data-chg="pdur" data-id="'+t.id+'" aria-label="Length">'+PDUR.map(function(o){return '<option value="'+o[0]+'"'+((t.dur||0)===o[0]?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select><input type="date" value="'+k+'" data-chg="pdate" data-id="'+t.id+'" aria-label="Move to day"></div>':'';
+  return '<li'+(opts.grip?' data-row':'')+' class="prow'+(t.done?' done':'')+(opts.cur?' cur':'')+'">'+(opts.grip?grip('plan',t.title):'')+(opts.lead||'')+
+    '<input type="checkbox" data-chg="pdone" data-id="'+t.id+'"'+(t.done?' checked':'')+' aria-label="Done: '+esc(t.title)+'"><span class="grow">'+esc(t.title)+(t.dur?' <span class="hint">'+durText(t.dur)+'</span>':'')+'</span>'+
+    '<button class="btn ghost sm" data-act="pedit" data-id="'+t.id+'" aria-pressed="'+ed+'">'+(ed?'Close':'Edit')+'</button>'+delBtn('ptask',t.id,'','✕')+editor+'</li>';
+}
+
 /* ---------- morning routine ---------- */
 function hm(t){var p=String(t||'0:0').split(':');return (+p[0]||0)*60+(+p[1]||0)}
 function mAt(t,base){var d=new Date(base||Date.now());d.setHours(0,0,0,0);return d.getTime()+hm(t)*60000}
@@ -1150,6 +1223,11 @@ var A={
  mreset:function(){ui.undo={snap:snapKeys(['mlog'])};delete S.mlog[today()];save();render();toast('Morning run cleared.',true)},
  exnotes:function(el){var i=+el.dataset.ei;ui.noteEx=ui.noteEx===i?null:i;render()},
  rnote:function(el){ui.noteR=ui.noteR===el.dataset.id?null:el.dataset.id;render()},
+ pday:function(el){var d=+el.dataset.d;ui.pDate=d===0?today():iso(addDays(parse(ui.pDate||today()),d));ui.pEdit=null;render()},
+ pedit:function(el){ui.pEdit=ui.pEdit===el.dataset.id?null:el.dataset.id;render()},
+ proll:function(){var tk=today(),pk=iso(addDays(parse(tk),-1)),mvd=pGet(pk).filter(function(t){return !t.done});if(!mvd.length)return;ui.undo={snap:snapKeys(['plan'])};S.plan[pk]=pGet(pk).filter(function(t){return t.done});S.plan[tk]=pGet(tk).concat(mvd);save();render();toast('Moved '+mvd.length+' task'+(mvd.length===1?'':'s')+' to today.',true)},
+ prolldis:function(){S.planRoll[iso(addDays(parse(today()),-1))]=true;save();render()},
+ pclear:function(){var k=ui.pDate||today();ui.undo={snap:snapKeys(['plan'])};S.plan[k]=pGet(k).filter(function(t){return !t.done});save();render();toast('Cleared done tasks.',true)},
  exmgr:function(){ui.exMgr=!ui.exMgr;render()},
  exsort:function(){S.exlist=exList().slice().sort(function(a,b){return a.localeCompare(b)});save();render()},
  exdefaults:function(){var n=0;EXS.forEach(function(x){if(exAdd(x))n++});save();toast(n?n+' default exercise'+(n>1?'s':'')+' added.':'Nothing missing.');render()},
@@ -1219,6 +1297,7 @@ var A={
   if(kind==='book')S.books=S.books.filter(function(x){return x.id!==id});
   if(kind==='note')S.notes=S.notes.filter(function(x){return x.id!==id});
   if(kind==='exlist')S.exlist=exList().filter(function(x,i){return i!==+id});
+  if(kind==='ptask'){var dk=ui.pDate||today();S.plan[dk]=pGet(dk).filter(function(x){return x.id!==id})}
   if(kind==='mstep')S.morn.steps=S.morn.steps.filter(function(x){return x.id!==id});
   if(kind==='savedmeal')S.savedMeals=S.savedMeals.filter(function(x){return x.id!==id});
   save();render();toast(UNDO_LABEL[kind]||'Deleted.',true);
@@ -1250,6 +1329,7 @@ var F={
   if(s==='__custom'){var m=exList().filter(function(x){return x.toLowerCase()===name.toLowerCase()})[0];if(m)name=m;else exAdd(name)}
   S.live.entries.push(liveEntry(name,3,8));save();render();
  },
+ ptask:function(){var t=$('#pt').value.trim();if(!t)return;var tm=$('#ptm').value||'',k=ui.pDate||today();(S.plan[k]=S.plan[k]||[]).push({id:uid(),title:t,time:tm,dur:+$('#pd').value||0,done:false});save();render();var i=$('#pt');if(i)i.focus()},
  mstep:function(){var n=$('#mn2').value.trim(),m=clamp($('#mm2').value,1,240);if(!n)return;S.morn.steps.push({id:uid(),name:n,min:m});save();render();var i=$('#mn2');if(i)i.focus()},
  exadd:function(){var v=$('#exnew').value.trim();if(!v)return;if(!exAdd(v)){toast('That exercise is already in the list.');return}save();render();var n=$('#exnew');if(n)n.focus()},
  weight:function(){var d=$('#wd').value||today(),v=num($('#wv').value);if(d>today()){toast('That date is in the future.');return}if(v<20||v>400){toast('Enter a weight between 20 and 400 kg.');return}S.weights[d]=Math.round(v*10)/10;save();toast('Weight logged.');render()},
@@ -1290,6 +1370,12 @@ var C={
  },
  homevis:function(el){var id=el.dataset.id,h=(S.homeHide||[]).slice(),i=h.indexOf(id);if(el.checked&&i>-1)h.splice(i,1);if(!el.checked&&i<0)h.push(id);S.homeHide=h;save();render()},
  barkg:function(el){var v=num(el.value);S.barKg=v>=1&&v<=50?v:20;el.value=S.barKg;save();var o=$('#plateout');if(o)o.innerHTML=plateHtml(ui.plateW)},
+ ptaskf:function(id){var k=ui.pDate||today();return pGet(k).filter(function(t){return t.id===id})[0]},
+ pdone:function(el){var t=C.ptaskf(el.dataset.id);if(t){t.done=el.checked;save();render()}},
+ ptitle:function(el){var t=C.ptaskf(el.dataset.id),v=el.value.trim();if(t&&v){t.title=v;save()}},
+ ptime:function(el){var t=C.ptaskf(el.dataset.id);if(t){t.time=el.value||'';save();render()}},
+ pdur:function(el){var t=C.ptaskf(el.dataset.id);if(t){t.dur=+el.value||0;save();render()}},
+ pdate:function(el){var k=ui.pDate||today(),t=C.ptaskf(el.dataset.id),nk=el.value;if(!t||!nk||nk===k)return;S.plan[k]=pGet(k).filter(function(x){return x!==t});(S.plan[nk]=S.plan[nk]||[]).push(t);ui.pEdit=null;save();render();toast('Moved to '+parse(nk).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+'.')},
  mname:function(el){var x=S.morn.steps.filter(function(y){return y.id===el.dataset.id})[0];if(x&&el.value.trim())x.name=el.value.trim();save()},
  mmin:function(el){var x=S.morn.steps.filter(function(y){return y.id===el.dataset.id})[0];if(x){x.min=clamp(el.value,1,240);el.value=x.min;save();render()}},
  mtime:function(el){if(!el.value)return;S.morn[el.dataset.f]=el.value;save();render()},
@@ -1393,7 +1479,12 @@ setInterval(function(){
   window.addEventListener('scroll',function(){var y=window.scrollY||0,dy=y-last;if(y<60||dy<-6)bar.classList.remove('hide');else if(dy>8&&y>140)bar.classList.add('hide');last=y},{passive:true});
   bar.addEventListener('focusin',function(){bar.classList.remove('hide')});
 })();
-function tick(){var d=new Date();var td0=iso(d);if(ui.day&&ui.day!==td0){ui.day=td0;var ae=document.activeElement;if(!(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)))render()}var e=$('#clock');if(e)e.innerHTML=pad(d.getHours())+':'+pad(d.getMinutes())+'<span class="sec">:'+pad(d.getSeconds())+'</span>'}
+setInterval(function(){
+  var nm=nowMin(),tk=today();
+  pGet(tk).forEach(function(t){if(t.time&&!t.done&&hm(t.time)===nm){var key=tk+t.id;if(!ui.pNote[key]){ui.pNote[key]=1;beep(1);try{if(navigator.vibrate)navigator.vibrate([200,100,200])}catch(e){}toast('Now: '+t.title)}}});
+  if(ui.view==='planner'&&ui.pMin!==nm){ui.pMin=nm;var ae=document.activeElement;if(!(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)))render()}
+},1000);
+function tick(){var d=new Date();var td0=iso(d);if(ui.day&&ui.day!==td0){if(ui.pDate===ui.day)ui.pDate=td0;ui.day=td0;var ae=document.activeElement;if(!(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)))render()}var e=$('#clock');if(e)e.innerHTML=pad(d.getHours())+':'+pad(d.getMinutes())+'<span class="sec">:'+pad(d.getSeconds())+'</span>'}
 tick();setInterval(tick,1000);
 
 /* ---------- events ---------- */

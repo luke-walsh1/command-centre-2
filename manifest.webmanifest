@@ -1,7 +1,7 @@
 {
   "name": "Command Centre",
   "short_name": "Command",
-  "description": "Habits, calendar, projects, gym, calories, books, notes and focus timer, synced across your devices.",
+  "description": "Habits, calendar, projects, gym, daily planner, books, notes and focus timer, synced across your devices.",
   "start_url": "./",
   "scope": "./",
   "id": "./",
@@ -67,9 +67,9 @@
       ]
     },
     {
-      "name": "Log calories",
-      "short_name": "Calories",
-      "url": "./#calories",
+      "name": "Plan today",
+      "short_name": "Planner",
+      "url": "./#planner",
       "icons": [
         {
           "src": "icons/icon-192.png",
