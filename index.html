@@ -169,6 +169,22 @@ table.hab{border-collapse:collapse;width:100%;min-width:560px}
 .days .d{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .days .n{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .exctl{display:contents}
+.figs{display:flex;justify-content:center;gap:28px;margin:8px 0}
+.figs figure{margin:0;text-align:center}
+.figs figcaption{font:11px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.fig{width:130px;height:auto;display:block}
+.fig .fbase *,.fig>g>path,.fig>g>ellipse,.fig>g>rect,.fig>g>g>*{fill:var(--line)}
+.fig .fbase{fill:var(--line)}
+.fig g.on *{fill:var(--accent)}
+.fig>g:not(.fbase){stroke:var(--surface);stroke-width:.6}
+.mtbl{overflow-x:auto}
+.mtbl table{width:100%;border-collapse:collapse;font-size:13px}
+.mtbl th,.mtbl td{padding:3px 4px;text-align:center;border-bottom:1px solid var(--line)}
+.mtbl td:first-child{text-align:left}
+.mtbl td.sel{background:var(--accent-soft)}
+.mtbl .dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.mday{border:1px solid var(--line);background:var(--bg);border-radius:6px;width:28px;height:26px;cursor:pointer;color:var(--fg)}
+.mday.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 @media (max-width:520px){
  .exli .grow{flex:1 1 0;min-width:0;overflow-wrap:anywhere}
  .exli .exctl{display:flex;align-items:center;gap:8px;flex:1 0 100%;padding-left:2px}
@@ -500,11 +516,11 @@ function defaults(){
     habits:[{id:uid(),name:'Drink 3L water',days:{}},{id:uid(),name:'Read 20 minutes',days:{}},{id:uid(),name:'Train or walk',days:{}},{id:uid(),name:'In bed before 23:00',days:{}}],
     events:[],projects:[],routines:r,workouts:[],live:null,
     goal:3300,meals:{},books:[],notes:[],
-    focusCfg:{focus:25,short:5,long:15},sessions:{},todayFocus:{},miniMin:5,weights:{},wtarget:0,reviews:{},exlist:EXS.slice(),restSec:90,homeOrder:[],homeHide:[],navHide:[],barKg:20,plates:[25,20,15,10,5,2.5,1.25],savedMeals:[],exnotes:{},plan:{},planRoll:{},morn:{start:'07:00',end:'08:30',steps:[{id:uid(),name:'Wake up and drink water',min:5},{id:uid(),name:'Stretch',min:10},{id:uid(),name:'Shower',min:15},{id:uid(),name:'Get dressed',min:10},{id:uid(),name:'Breakfast',min:20},{id:uid(),name:'Pack bag',min:5}]},mlog:{}};
+    focusCfg:{focus:25,short:5,long:15},sessions:{},todayFocus:{},miniMin:5,weights:{},wtarget:0,reviews:{},exlist:EXS.slice(),restSec:90,homeOrder:[],homeHide:[],navHide:[],barKg:20,plates:[25,20,15,10,5,2.5,1.25],savedMeals:[],exnotes:{},exmus:{},plan:{},planRoll:{},morn:{start:'07:00',end:'08:30',steps:[{id:uid(),name:'Wake up and drink water',min:5},{id:uid(),name:'Stretch',min:10},{id:uid(),name:'Shower',min:15},{id:uid(),name:'Get dressed',min:10},{id:uid(),name:'Breakfast',min:20},{id:uid(),name:'Pack bag',min:5}]},mlog:{}};
 }
 var S=defaults();
 function normalise(o){var d=defaults();for(var k in d){if(o[k]===undefined)o[k]=d[k]}for(var i=0;i<7;i++){if(!o.routines[i])o.routines[i]={name:'',ex:[]}}return o}
-var ui={view:'home',weekOff:0,cal:{y:new Date().getFullYear(),m:new Date().getMonth()},sel:iso(new Date()),proj:null,planDay:(new Date().getDay()+6)%7,calDate:iso(new Date()),editNote:null,noteQ:'',revOff:0,wRange:90,exMgr:false,pDate:iso(new Date()),pEdit:null,pNote:{},pMin:-1,noteEx:null,noteR:null,homeEdit:false,plateW:0,plateEx:null,undo:null,exDetail:null,exMetric:'1rm',rest:{end:0},wDate:iso(new Date()),editH:false,confirm:null,sync:'Local only',importOpen:false,exportText:'',
+var ui={view:'home',weekOff:0,cal:{y:new Date().getFullYear(),m:new Date().getMonth()},sel:iso(new Date()),proj:null,planDay:(new Date().getDay()+6)%7,calDate:iso(new Date()),editNote:null,noteQ:'',revOff:0,wRange:90,exMgr:false,mEx:null,mWeek:false,pDate:iso(new Date()),pEdit:null,pNote:{},pMin:-1,noteEx:null,noteR:null,homeEdit:false,plateW:0,plateEx:null,undo:null,exDetail:null,exMetric:'1rm',rest:{end:0},wDate:iso(new Date()),editH:false,confirm:null,sync:'Local only',importOpen:false,exportText:'',
   t:{mode:'focus',remaining:25*60,end:0,running:false}};
 /* ===== DATA ADAPTER BOUNDARY =====
    The UI never talks to a backend. It only calls window.CCData (see README.md):
@@ -764,16 +780,16 @@ V['gym-plan']=function(){
     '<div class="restbar" id="restbar"'+(restLeft()>0?'':' hidden')+'>'+(restLeft()>0?restInner(restLeft()):'')+'</div></div>';
   }
   var mgr=ui.exMgr?'<div class="panel"><h3>Exercise list</h3><p class="muted" style="margin:0 0 10px">These are the choices in the exercise dropdowns. Renaming also updates your routines and workout history. Removing only takes it off the list; your history stays.</p>'+
-    (exList().length?'<ul class="list">'+exList().map(function(x,i){return '<li data-row>'+grip('exlist',x)+'<input type="text" maxlength="50" value="'+esc(x)+'" data-chg="exren" data-i="'+i+'" aria-label="Exercise name" style="flex:1 1 140px;min-width:0">'+delBtn('exlist',i,'','Remove')+'</li>'}).join('')+'</ul>':'<div class="empty">The list is empty. Add your own below.</div>')+
+    (exList().length?'<ul class="list">'+exList().map(function(x,i){return '<li data-row style="flex-wrap:wrap">'+grip('exlist',x)+'<input type="text" maxlength="50" value="'+esc(x)+'" data-chg="exren" data-i="'+i+'" aria-label="Exercise name" style="flex:1 1 140px;min-width:0"><button class="btn ghost sm" data-act="mex" data-i="'+i+'" aria-pressed="'+(ui.mEx===i)+'">Muscles</button>'+delBtn('exlist',i,'','Remove')+'<div class="hint" style="flex-basis:100%">'+esc(musText(x))+((S.exmus&&Array.isArray(S.exmus[x]))?'':' (auto)')+'</div>'+(ui.mEx===i?'<div class="chips" style="flex-basis:100%">'+MUS.map(function(m){var on=exMus(x).indexOf(m[0])>=0;return '<button type="button" class="chip'+(on?' on':'')+'" data-act="mtog" data-i="'+i+'" data-m="'+m[0]+'" aria-pressed="'+on+'">'+m[1]+'</button>'}).join('')+'<button type="button" class="chip" data-act="mauto" data-i="'+i+'">Reset to auto</button></div>':'')+'</li>'}).join('')+'</ul>':'<div class="empty">The list is empty. Add your own below.</div>')+
     '<form data-form="exadd" class="form" style="margin-top:12px"><input id="exnew" type="text" maxlength="50" placeholder="New exercise name" required aria-label="New exercise"><button class="btn" type="submit">Add to list</button></form>'+
     '<div class="row" style="margin-top:12px"><button class="btn ghost sm" data-act="exsort">Sort A–Z</button><button class="btn ghost sm" data-act="exdefaults">Restore missing defaults</button></div></div>':'';
   var opts=exList().map(function(x){return '<option>'+esc(x)+'</option>'}).join('');
   var ed='<div class="panel"><h3>'+['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][ui.planDay]+' routine</h3>'+
     '<div class="form"><input id="rn" type="text" maxlength="40" value="'+esc(rd.name)+'" placeholder="Routine name, e.g. Push day" data-chg="rname" aria-label="Routine name"></div>'+
-    (rd.ex.length?'<ul class="list" style="margin-top:8px">'+rd.ex.map(function(e){return '<li data-row class="exli" style="flex-wrap:wrap">'+grip('routine',e.name)+'<span class="grow">'+esc(e.name)+(exNote(e.name)?'<div class="exnote">'+esc(exNote(e.name))+'</div>':'')+'</span><span class="exctl"><input type="number" min="1" max="20" value="'+e.sets+'" data-chg="exsets" data-id="'+e.id+'" style="width:64px" aria-label="Sets"><span class="muted">×</span><input type="number" min="1" max="100" value="'+e.reps+'" data-chg="exreps" data-id="'+e.id+'" style="width:64px" aria-label="Reps"><button class="btn ghost sm" data-act="rnote" data-id="'+e.id+'" aria-pressed="'+(ui.noteR===e.id)+'" aria-label="Note for '+esc(e.name)+'">Note'+(exNote(e.name)?' •':'')+'</button><button class="btn ghost sm" data-act="rmex" data-id="'+e.id+'" aria-label="Remove '+esc(e.name)+'">✕</button></span>'+(ui.noteR===e.id?'<div class="notebox" style="flex-basis:100%"><textarea data-chg="exnote" data-n="'+esc(e.name)+'" placeholder="Setup or cues, e.g. seat 4, grip just outside shoulders" aria-label="Note for '+esc(e.name)+'">'+esc(exNote(e.name))+'</textarea></div>':'')+'</li>'}).join('')+'</ul>':'<div class="empty" style="margin-top:8px">No exercises yet. Leave empty for a rest day.</div>')+
+    (rd.ex.length?'<ul class="list" style="margin-top:8px">'+rd.ex.map(function(e){return '<li data-row class="exli" style="flex-wrap:wrap">'+grip('routine',e.name)+'<span class="grow">'+esc(e.name)+'<div class="hint">'+esc(musText(e.name))+'</div>'+(exNote(e.name)?'<div class="exnote">'+esc(exNote(e.name))+'</div>':'')+'</span><span class="exctl"><input type="number" min="1" max="20" value="'+e.sets+'" data-chg="exsets" data-id="'+e.id+'" style="width:64px" aria-label="Sets"><span class="muted">×</span><input type="number" min="1" max="100" value="'+e.reps+'" data-chg="exreps" data-id="'+e.id+'" style="width:64px" aria-label="Reps"><button class="btn ghost sm" data-act="rnote" data-id="'+e.id+'" aria-pressed="'+(ui.noteR===e.id)+'" aria-label="Note for '+esc(e.name)+'">Note'+(exNote(e.name)?' •':'')+'</button><button class="btn ghost sm" data-act="rmex" data-id="'+e.id+'" aria-label="Remove '+esc(e.name)+'">✕</button></span>'+(ui.noteR===e.id?'<div class="notebox" style="flex-basis:100%"><textarea data-chg="exnote" data-n="'+esc(e.name)+'" placeholder="Setup or cues, e.g. seat 4, grip just outside shoulders" aria-label="Note for '+esc(e.name)+'">'+esc(exNote(e.name))+'</textarea></div>':'')+'</li>'}).join('')+'</ul>':'<div class="empty" style="margin-top:8px">No exercises yet. Leave empty for a rest day.</div>')+
     '<form data-form="addex" class="form" style="margin-top:14px"><select id="exsel" data-cust="excustom" aria-label="Exercise">'+opts+'<option value="__custom">Custom…</option></select><input id="excustom" type="text" maxlength="50" placeholder="Custom exercise name" aria-label="Custom exercise" hidden><button class="btn" type="submit">Add to routine</button><button class="btn ghost" type="button" data-act="exmgr" aria-pressed="'+ui.exMgr+'">'+(ui.exMgr?'Hide list editor':'Edit exercise list')+'</button></form>'+
     '<div class="row" style="margin-top:16px"><button class="btn" data-act="startlive"'+(rd.ex.length&&!S.live?'':' disabled style="opacity:.5;cursor:not-allowed"')+'>Start live workout</button>'+(S.live?'<span class="muted">Finish the current session first.</span>':'')+'</div></div>';
-  return head('Weekly gym plan','Plan each day, then log it live.')+tabs+live+ed+plateCard()+mgr;
+  return head('Weekly gym plan','Plan each day, then log it live.')+tabs+live+ed+muscleCard()+plateCard()+mgr;
 };
 
 function exDetailView(){
@@ -1002,6 +1018,38 @@ V.focus=function(){
 function fmtT(s){s=Math.max(0,Math.ceil(s));return pad(Math.floor(s/60))+':'+pad(s%60)}
 
 /* ---------- gym helpers ---------- */
+var MUS=[['chest','Chest'],['shoulders','Shoulders'],['traps','Traps'],['lats','Lats'],['biceps','Biceps'],['triceps','Triceps'],['forearms','Forearms'],['abs','Abs'],['obliques','Obliques'],['lowerback','Lower back'],['glutes','Glutes'],['quads','Quads'],['hamstrings','Hamstrings'],['calves','Calves']];
+var MUSN={};MUS.forEach(function(m){MUSN[m[0]]=m[1]});
+var MGUESS=[[/leg curl|hamstring curl/i,['hamstrings']],[/leg extension/i,['quads']],[/calf/i,['calves']],[/romanian|rdl|stiff|good morning/i,['hamstrings','glutes','lowerback']],[/deadlift/i,['hamstrings','glutes','lowerback','traps','forearms']],[/hip thrust|glute|kickback/i,['glutes']],[/squat|leg press|hack/i,['quads','glutes']],[/lunge|split squat|step.?up/i,['quads','glutes','hamstrings']],[/upright row/i,['shoulders','traps']],[/face pull|rear delt|reverse fly/i,['shoulders','traps']],[/shrug/i,['traps']],[/pull.?up|chin.?up|pulldown|pull.?down/i,['lats','biceps','forearms']],[/row/i,['lats','traps','biceps']],[/hammer|wrist|reverse curl/i,['biceps','forearms']],[/curl/i,['biceps']],[/tricep|pushdown|push.?down|skull|kickback|close.?grip/i,['triceps']],[/dip/i,['chest','triceps','shoulders']],[/incline/i,['chest','shoulders','triceps']],[/overhead|shoulder press|military|arnold|lateral raise|front raise|raise/i,['shoulders','triceps']],[/bench|chest|fly|flye|push.?up|pec/i,['chest','shoulders','triceps']],[/crunch|plank|sit.?up|ab |abs|leg raise|rollout/i,['abs','obliques']],[/twist|oblique|woodchop/i,['obliques']],[/hyperext|back extension/i,['lowerback','glutes']]];
+function musGuess(n){for(var i=0;i<MGUESS.length;i++){if(MGUESS[i][0].test(n))return MGUESS[i][1].slice()}return[]}
+function exMus(n){var m=S.exmus&&S.exmus[n];return Array.isArray(m)?m:musGuess(n)}
+function musText(n){var m=exMus(n);return m.length?m.map(function(k){return MUSN[k]}).join(', '):'No muscles set'}
+function dayMus(d){var o={};S.routines[d].ex.forEach(function(e){exMus(e.name).forEach(function(k){o[k]=(o[k]||0)+1})});return o}
+var FIG={
+ front:[['shoulders','<ellipse cx="25" cy="38" rx="6" ry="7"/>'],['chest','<path d="M31 36 Q40 33 49 37 L49 52 Q40 56 32 50 Z"/>'],['biceps','<ellipse cx="23" cy="54" rx="4.5" ry="9"/>'],['forearms','<ellipse cx="20.5" cy="73" rx="4" ry="10"/>'],['abs','<rect x="42" y="54" width="7" height="38" rx="3"/>'],['obliques','<path d="M33 54 L41 54 L41 90 L36 88 Q33 72 33 54 Z"/>'],['quads','<path d="M35 102 L49 102 L48 140 Q42 144 37 140 Q33 122 35 102 Z"/>'],['calves','<path d="M37 147 L46 147 L44 182 L39 182 Z"/>']],
+ back:[['traps','<path d="M50 24 L42 27 Q36 30 31 34 L40 43 L50 47 Z"/>'],['shoulders','<ellipse cx="25" cy="38" rx="6" ry="7"/>'],['lats','<path d="M32 42 L41 47 L49 53 L48 75 Q40 77 36 72 Q32 58 32 42 Z"/>'],['triceps','<ellipse cx="23" cy="54" rx="4.5" ry="9"/>'],['forearms','<ellipse cx="20.5" cy="73" rx="4" ry="10"/>'],['lowerback','<path d="M42 77 L49 77 L49 94 L42 94 Z"/>'],['glutes','<path d="M35 96 L49 96 L49 112 Q40 117 35 110 Z"/>'],['hamstrings','<path d="M35 114 L49 114 L48 142 Q42 145 37 142 Q33 128 35 114 Z"/>'],['calves','<path d="M37 147 L46 147 Q48 162 44 182 L39 182 Q36 162 37 147 Z"/>']]
+};
+var FBASE='<circle cx="50" cy="14" r="9"/><rect x="45" y="22" width="10" height="7" rx="2"/><path d="M34 94 L66 94 L65 105 L35 105Z"/><ellipse cx="19" cy="88" rx="3.2" ry="4.5"/><rect x="36" y="140" width="12" height="8" rx="3"/><ellipse cx="41" cy="185" rx="5" ry="3"/>';
+function figSvg(side,lv,label){
+  var out='<svg viewBox="0 0 100 192" class="fig" role="img" aria-label="'+esc(label)+'"><g class="fbase">'+FBASE+'<g transform="translate(100 0) scale(-1 1)">'+FBASE+'</g></g>';
+  FIG[side].forEach(function(r){var l=lv[r[0]]||0,st=l?' class="on" style="fill-opacity:'+(0.35+0.65*l).toFixed(2)+'"':'';out+='<g'+st+'>'+r[1]+'<g transform="translate(100 0) scale(-1 1)">'+r[1]+'</g></g>'});
+  return out+'</svg>';
+}
+function muscleCard(){
+  var d=ui.planDay,dm=dayMus(d),keys=Object.keys(dm),lv={},wk=[],mx=1;
+  if(ui.mWeek){var tot={};for(var i=0;i<7;i++){var m=dayMus(i);for(var k in m)tot[k]=(tot[k]||0)+1}for(var k2 in tot)mx=Math.max(mx,tot[k2]);for(var k3 in tot)lv[k3]=tot[k3]/mx}
+  else keys.forEach(function(k){lv[k]=1});
+  var all=[];for(var j=0;j<7;j++)all.push(dayMus(j));
+  var never=MUS.filter(function(m){return !all.some(function(x){return x[m[0]]})}).map(function(m){return m[1]});
+  var title=ui.mWeek?'Whole week':(S.routines[d].name||DOW[d]);
+  var legend=ui.mWeek?'Darker means trained on more days.':(keys.length?keys.map(function(k){return MUSN[k]}).join(', '):'Rest day, or no muscles set for these exercises.');
+  var tbl='<div class="mtbl"><table><thead><tr><th></th>'+DOW.map(function(x,i){return '<th><button class="mday'+(i===d&&!ui.mWeek?' on':'')+'" data-act="plan" data-d="'+i+'" aria-label="Show '+x+'">'+x[0]+'</button></th>'}).join('')+'</tr></thead><tbody>'+MUS.map(function(m){return '<tr><td>'+m[1]+'</td>'+all.map(function(x,i){return '<td class="'+(i===d&&!ui.mWeek?'sel':'')+'">'+(x[m[0]]?'<span class="dot"></span>':'')+'</td>'}).join('')+'</tr>'}).join('')+'</tbody></table></div>';
+  return '<div class="panel"><div class="row" style="justify-content:space-between"><h3>Muscles worked</h3><span class="chipset"><button class="chip'+(ui.mWeek?'':' on')+'" data-act="mweek" data-w="0" aria-pressed="'+!ui.mWeek+'">Selected day</button><button class="chip'+(ui.mWeek?' on':'')+'" data-act="mweek" data-w="1" aria-pressed="'+ui.mWeek+'">Whole week</button></span></div>'+
+   '<div class="figs"><figure>'+figSvg('front',lv,title+', front view')+'<figcaption>Front</figcaption></figure><figure>'+figSvg('back',lv,title+', back view')+'<figcaption>Back</figcaption></figure></div>'+
+   '<p class="muted" style="text-align:center;margin:4px 0 12px"><b>'+esc(title)+'</b>: '+esc(legend)+'</p>'+tbl+
+   (never.length?'<p class="hint" style="margin:10px 0 0">Not trained this week: '+esc(never.join(', '))+'.</p>':'<p class="hint" style="margin:10px 0 0">Every muscle group is trained at least once this week.</p>')+
+   '<p class="hint" style="margin:6px 0 0">Muscles come from each exercise. Set them under Edit exercise list. Unset exercises are guessed from their name.</p></div>';
+}
 function exNote(n){return (S.exnotes&&S.exnotes[n])||''}
 function setExNote(n,v){S.exnotes=S.exnotes||{};v=String(v||'').trim();if(v)S.exnotes[n]=v;else delete S.exnotes[n]}
 function exList(){return Array.isArray(S.exlist)?S.exlist:[]}
@@ -1211,7 +1259,7 @@ var A={
  selday:function(el){ui.sel=el.dataset.d;var p=parse(ui.sel);ui.cal={y:p.getFullYear(),m:p.getMonth()};render()},
  openproj:function(el){ui.proj=el.dataset.id;render()},
  projback:function(){ui.proj=null;render()},
- plan:function(el){ui.planDay=+el.dataset.d;render()},
+ plan:function(el){ui.planDay=+el.dataset.d;ui.mWeek=false;render()},
  rmex:function(el){ui.undo={snap:snapKeys(['routines'])};S.routines[ui.planDay].ex=S.routines[ui.planDay].ex.filter(function(e){return e.id!==el.dataset.id});save();render();toast('Exercise removed from routine.',true)},
  undo:function(){var u=ui.undo;if(!u)return;Object.keys(u.snap).forEach(function(k){S[k]=u.snap[k]});ui.undo=null;save();render();toast('Restored.')},
  startlive:function(){
@@ -1238,6 +1286,10 @@ var A={
  prolldis:function(){S.planRoll[iso(addDays(parse(today()),-1))]=true;save();render()},
  pclear:function(){var k=ui.pDate||today();ui.undo={snap:snapKeys(['plan'])};S.plan[k]=pGet(k).filter(function(t){return !t.done});save();render();toast('Cleared done tasks.',true)},
  exmgr:function(){ui.exMgr=!ui.exMgr;render()},
+ mex:function(el){var i=+el.dataset.i;ui.mEx=ui.mEx===i?null:i;render()},
+ mtog:function(el){var n=exList()[+el.dataset.i],m=el.dataset.m,cur=exMus(n).slice(),ix=cur.indexOf(m);if(ix>=0)cur.splice(ix,1);else cur.push(m);S.exmus=S.exmus||{};S.exmus[n]=cur;save();render()},
+ mauto:function(el){var n=exList()[+el.dataset.i];if(S.exmus)delete S.exmus[n];save();render()},
+ mweek:function(el){ui.mWeek=el.dataset.w==='1';render()},
  exsort:function(){S.exlist=exList().slice().sort(function(a,b){return a.localeCompare(b)});save();render()},
  exdefaults:function(){var n=0;EXS.forEach(function(x){if(exAdd(x))n++});save();toast(n?n+' default exercise'+(n>1?'s':'')+' added.':'Nothing missing.');render()},
  exdetail:function(el){ui.exDetail=el.dataset.n;render();window.scrollTo(0,0)},
@@ -1396,6 +1448,7 @@ var C={
   if(!nn||nn===old){render();return}
   if(exList().some(function(x,j){return j!==i&&x.toLowerCase()===nn.toLowerCase()})){toast('That name is already in the list.');render();return}
   S.exlist=exList().slice();S.exlist[i]=nn;
+  if(S.exmus&&S.exmus[old]!==undefined){S.exmus[nn]=S.exmus[old];delete S.exmus[old]}
   if(S.exnotes&&S.exnotes[old]!==undefined){S.exnotes[nn]=S.exnotes[old];delete S.exnotes[old]}
   Object.keys(S.routines).forEach(function(d){S.routines[d].ex.forEach(function(x){if(x.name===old)x.name=nn})});
   S.workouts.forEach(function(w){w.entries.forEach(function(x){if(x.name===old)x.name=nn})});
