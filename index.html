@@ -169,14 +169,15 @@ table.hab{border-collapse:collapse;width:100%;min-width:560px}
 .days .d{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .days .n{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .exctl{display:contents}
-.figs{display:flex;justify-content:center;gap:28px;margin:8px 0}
+.figs{display:flex;justify-content:center;gap:12px;margin:8px 0;background:#29292e;border-radius:12px;padding:14px 8px 8px}
 .figs figure{margin:0;text-align:center}
-.figs figcaption{font:11px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-.fig{width:130px;height:auto;display:block}
-.fig .fbase *,.fig>g>path,.fig>g>ellipse,.fig>g>rect,.fig>g>g>*{fill:var(--line)}
-.fig .fbase{fill:var(--line)}
-.fig g.on *{fill:var(--accent)}
-.fig>g:not(.fbase){stroke:var(--surface);stroke-width:.6}
+.figs figcaption{font:11px var(--mono);color:#9a9aa3;text-transform:uppercase;letter-spacing:.08em}
+.fig{width:min(160px,42vw);height:auto;display:block}
+.fig .head{fill:#3d3d42}
+.fig .body{fill:#48484e}
+.fig .m{fill:#626268;stroke:#3a3a40;stroke-width:.9}
+.fig .m.l{fill:#85858b}
+.fig .m.on *{fill:#e9e9ee}
 .mtbl{overflow-x:auto}
 .mtbl table{width:100%;border-collapse:collapse;font-size:13px}
 .mtbl th,.mtbl td{padding:3px 4px;text-align:center;border-bottom:1px solid var(--line)}
@@ -1025,15 +1026,41 @@ function musGuess(n){for(var i=0;i<MGUESS.length;i++){if(MGUESS[i][0].test(n))re
 function exMus(n){var m=S.exmus&&S.exmus[n];return Array.isArray(m)?m:musGuess(n)}
 function musText(n){var m=exMus(n);return m.length?m.map(function(k){return MUSN[k]}).join(', '):'No muscles set'}
 function dayMus(d){var o={};S.routines[d].ex.forEach(function(e){exMus(e.name).forEach(function(k){o[k]=(o[k]||0)+1})});return o}
+function sp(pts){var n=pts.length,d='M'+pts[0][0]+' '+pts[0][1];for(var i=0;i<n;i++){var p0=pts[(i-1+n)%n],p1=pts[i],p2=pts[(i+1)%n],p3=pts[(i+2)%n];d+='C'+(p1[0]+(p2[0]-p0[0])/6).toFixed(1)+' '+(p1[1]+(p2[1]-p0[1])/6).toFixed(1)+' '+(p2[0]-(p3[0]-p1[0])/6).toFixed(1)+' '+(p2[1]-(p3[1]-p1[1])/6).toFixed(1)+' '+p2[0]+' '+p2[1]}return '<path d="'+d+'Z"/>'}
+function rr(x1,y1,x2,y2){return '<rect x="'+x1+'" y="'+y1+'" width="'+(x2-x1)+'" height="'+(y2-y1)+'" rx="3.5"/>'}
+var F_BODY=[[94,62],[78,68],[60,76],[48,92],[42,120],[36,150],[31,185],[25,215],[21,236],[27,245],[39,243],[45,230],[49,205],[54,172],[58,150],[63,175],[67,205],[63,232],[59,262],[59,290],[61,310],[58,340],[59,365],[63,392],[57,404],[71,410],[83,404],[85,385],[89,350],[93,320],[95,295],[97,260],[99,225],[100,212]];
+var F_HEAD='<path d="M100 8C88 7 83 17 83 29C83 40 87 47 90 52C91 56 92 58 92 62L108 62C108 58 109 56 110 52C113 47 117 40 117 29C117 17 112 7 100 8Z"/>';
+var DELT=[[56,78],[67,72],[73,83],[67,108],[54,114],[44,102],[46,88]];
+var ARM=[[46,110],[57,116],[55,152],[46,162],[40,152],[40,122]];
+var FORE=[[44,168],[52,170],[48,202],[40,216],[34,202],[36,178]];
 var FIG={
- front:[['shoulders','<ellipse cx="25" cy="38" rx="6" ry="7"/>'],['chest','<path d="M31 36 Q40 33 49 37 L49 52 Q40 56 32 50 Z"/>'],['biceps','<ellipse cx="23" cy="54" rx="4.5" ry="9"/>'],['forearms','<ellipse cx="20.5" cy="73" rx="4" ry="10"/>'],['abs','<rect x="42" y="54" width="7" height="38" rx="3"/>'],['obliques','<path d="M33 54 L41 54 L41 90 L36 88 Q33 72 33 54 Z"/>'],['quads','<path d="M35 102 L49 102 L48 140 Q42 144 37 140 Q33 122 35 102 Z"/>'],['calves','<path d="M37 147 L46 147 L44 182 L39 182 Z"/>']],
- back:[['traps','<path d="M50 24 L42 27 Q36 30 31 34 L40 43 L50 47 Z"/>'],['shoulders','<ellipse cx="25" cy="38" rx="6" ry="7"/>'],['lats','<path d="M32 42 L41 47 L49 53 L48 75 Q40 77 36 72 Q32 58 32 42 Z"/>'],['triceps','<ellipse cx="23" cy="54" rx="4.5" ry="9"/>'],['forearms','<ellipse cx="20.5" cy="73" rx="4" ry="10"/>'],['lowerback','<path d="M42 77 L49 77 L49 94 L42 94 Z"/>'],['glutes','<path d="M35 96 L49 96 L49 112 Q40 117 35 110 Z"/>'],['hamstrings','<path d="M35 114 L49 114 L48 142 Q42 145 37 142 Q33 128 35 114 Z"/>'],['calves','<path d="M37 147 L46 147 Q48 162 44 182 L39 182 Q36 162 37 147 Z"/>']]
+ front:[
+  ['shoulders',1,[sp(DELT)]],
+  ['traps',0,[sp([[94,64],[82,69],[73,75],[84,77],[96,77]])]],
+  ['chest',0,[sp([[98,80],[82,77],[72,84],[68,100],[76,112],[90,115],[98,108]])]],
+  ['biceps',0,[sp(ARM)]],
+  ['forearms',1,[sp(FORE)]],
+  ['abs',0,[rr(86,118,99,134),rr(86,137,99,153),rr(86,156,99,172),rr(88,175,99,198)]],
+  ['obliques',0,[sp([[83,119],[76,122],[70,142],[69,168],[75,188],[83,192],[84,168],[84,142]])]],
+  ['quads',0,[sp([[78,208],[66,226],[62,262],[64,290],[72,298],[78,270],[80,238]]),sp([[96,216],[84,214],[82,244],[80,274],[85,296],[93,292],[96,260]])]],
+  ['calves',1,[sp([[64,318],[72,312],[77,340],[74,374],[68,376],[62,348]]),sp([[85,320],[91,322],[89,352],[83,374],[79,352]])]]
+ ],
+ back:[
+  ['shoulders',1,[sp(DELT)]],
+  ['lats',0,[sp([[96,134],[86,112],[72,104],[66,118],[70,148],[84,171],[96,173]])]],
+  ['traps',0,[sp([[100,70],[88,74],[74,80],[78,92],[92,106],[100,126]]),sp([[100,62],[94,64],[100,72]])]],
+  ['triceps',0,[sp(ARM)]],
+  ['forearms',1,[sp(FORE)]],
+  ['lowerback',0,[sp([[98,176],[85,174],[81,187],[85,201],[98,205]])]],
+  ['glutes',0,[sp([[98,208],[82,202],[68,210],[64,228],[74,242],[90,240],[98,230]])]],
+  ['hamstrings',0,[sp([[96,246],[78,244],[66,254],[62,282],[66,304],[78,308],[88,298],[96,270]])]],
+  ['calves',1,[sp([[88,318],[72,313],[62,328],[60,352],[68,370],[80,358],[86,338]])]]
+ ]
 };
-var FBASE='<circle cx="50" cy="14" r="9"/><rect x="45" y="22" width="10" height="7" rx="2"/><path d="M34 94 L66 94 L65 105 L35 105Z"/><ellipse cx="19" cy="88" rx="3.2" ry="4.5"/><rect x="36" y="140" width="12" height="8" rx="3"/><ellipse cx="41" cy="185" rx="5" ry="3"/>';
 function figSvg(side,lv,label){
-  var out='<svg viewBox="0 0 100 192" class="fig" role="img" aria-label="'+esc(label)+'"><g class="fbase">'+FBASE+'<g transform="translate(100 0) scale(-1 1)">'+FBASE+'</g></g>';
-  FIG[side].forEach(function(r){var l=lv[r[0]]||0,st=l?' class="on" style="fill-opacity:'+(0.35+0.65*l).toFixed(2)+'"':'';out+='<g'+st+'>'+r[1]+'<g transform="translate(100 0) scale(-1 1)">'+r[1]+'</g></g>'});
-  return out+'</svg>';
+  var M='translate(200 0) scale(-1 1)',out='<svg viewBox="0 0 200 420" class="fig" role="img" aria-label="'+esc(label)+'"><g transform="translate(100 0) scale(.86 1) translate(-100 0)"><g class="head">'+F_HEAD+'</g><g class="body">'+sp(F_BODY)+'<g transform="'+M+'">'+sp(F_BODY)+'</g></g>';
+  FIG[side].forEach(function(r){var l=lv[r[0]]||0,inner=r[2].join('')+'<g transform="'+M+'">'+r[2].join('')+'</g>';out+='<g class="m'+(r[1]?' l':'')+(l?' on':'')+'"'+(l?' style="fill-opacity:'+(0.4+0.6*l).toFixed(2)+'"':'')+'>'+inner+'</g>'});
+  return out+'</g></svg>';
 }
 function muscleCard(){
   var d=ui.planDay,dm=dayMus(d),keys=Object.keys(dm),lv={},wk=[],mx=1;
