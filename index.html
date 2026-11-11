@@ -1028,24 +1028,27 @@ V.planner=function(){
   anyHtml+sched+empty+pTplPanel()+
   (done?'<div class="row"><button class="btn ghost sm" data-act="pclear">Clear '+done+' done task'+(done===1?'':'s')+'</button></div>':'');
 };
-var PBD=[['1k','1 km',1],['1mi','1 mile',1.609],['3k','3 km',3],['5k','5K',5],['10k','10K',10],['half','Half marathon',21.0975],['full','Marathon',42.195]];
+var PBD=[['100m','100 m',0.1],['400m','400 m',0.4],['1k','1 km',1],['1mi','1 mile',1.609],['3k','3 km',3],['5k','5K',5],['10k','10K',10],['half','Half marathon',21.0975],['full','Marathon',42.195]];
 function rF(){return S.runUnit==='mi'?0.621371:1}
 function rU(){return S.runUnit==='mi'?'mi':'km'}
-function rFmt(sec){sec=Math.round(sec);var h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),r=sec%60;return h?h+':'+pad(m)+':'+pad(r):m+':'+pad(r)}
+function rFmt(sec){var t=Math.round(sec*100)/100,w=Math.floor(t),fr=Math.round((t-w)*100),h=Math.floor(w/3600),m=Math.floor(w%3600/60),r=w%60,ds=fr?'.'+(fr%10?pad(fr):fr/10):'';
+  if(!h&&!m)return r+ds+'s';return h?h+':'+pad(m)+':'+pad(r)+ds:m+':'+pad(r)+ds}
+function rFmtP(sec){return rFmt(Math.round(sec))}
+function rD(km){return S.runUnit!=='mi'&&km<1?Math.round(km*1000)+' m':rKm(km)+' '+rU()}
 function rKm(v){return (Math.round(v*rF()*100)/100).toString()}
-function rPace(km,sec){return km>0?rFmt(sec/(km*rF()))+' /'+rU():'–'}
+function rPace(km,sec){return km>0?rFmtP(sec/(km*rF()))+' /'+rU():'–'}
 function rCat(km){for(var i=0;i<PBD.length;i++){if(km>=PBD[i][2]*0.99&&km<=PBD[i][2]*1.03)return PBD[i][0]}return null}
 function rSorted(){return S.runs.slice().sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:(a.t||0)-(b.t||0)})}
 function rPBs(){var best={},flag={};rSorted().forEach(function(r){var c=rCat(r.km);if(!c)return;if(!best[c]||r.sec<best[c].sec){best[c]=r;flag[r.id]=c}});return {best:best,flag:flag}}
 function rWeekKm(ws){var a=iso(ws),b=iso(addDays(ws,6));return S.runs.filter(function(r){return r.date>=a&&r.date<=b}).reduce(function(t,r){return t+r.km},0)}
 function rStreak(){var wk={};S.runs.forEach(function(r){wk[iso(mondayOf(parse(r.date)))]=1});var w=mondayOf(new Date());if(!wk[iso(w)])w=addDays(w,-7);var n=0;while(wk[iso(w)]){n++;w=addDays(w,-7)}return n}
-function runCheck(d,km,sec){if(d>today())return 'That date is in the future.';if(!(km>=0.1&&km<=400))return 'Enter a realistic distance.';if(sec<=0)return 'Enter the time it took.';if(sec/km<90)return 'That pace is faster than 1:30 per km. Check the time.';return ''}
+function runCheck(d,km,sec){if(d>today())return 'That date is in the future.';if(!(km>=0.05&&km<=400))return 'Enter a realistic distance.';if(sec<=0)return 'Enter the time it took.';if(sec/km<90)return 'That pace is faster than 1:30 per km. Check the time.';return ''}
 function runRead(f){var q=function(n){return f.querySelector('[name='+n+']')};return {d:q('d').value||today(),km:num(q('k').value)/rF(),sec:(num(q('h').value)||0)*3600+(num(q('m').value)||0)*60+(num(q('s').value)||0),note:(q('n').value||'').trim()}}
-function runFields(v){v=v||{};var h='',m='',sc='';if(v.sec){h=Math.floor(v.sec/3600)||'';m=Math.floor(v.sec%3600/60);sc=v.sec%60}
-  return '<input name="d" type="date" value="'+(v.date||today())+'" max="'+today()+'" required aria-label="Date"><input name="k" type="number" min="0.1" max="400" step="0.01" placeholder="'+rU()+'" value="'+(v.km?rKm(v.km):'')+'" required aria-label="Distance in '+(S.runUnit==='mi'?'miles':'kilometres')+'" style="width:90px"><span class="row" style="gap:4px"><input name="h" type="number" min="0" max="48" placeholder="h" value="'+h+'" aria-label="Hours" style="width:56px"><input name="m" type="number" min="0" max="59" placeholder="min" value="'+m+'" aria-label="Minutes" style="width:62px"><input name="s" type="number" min="0" max="59" placeholder="sec" value="'+sc+'" aria-label="Seconds" style="width:62px"></span><input name="n" type="text" maxlength="80" placeholder="Note (optional)" value="'+esc(v.note||'')+'" aria-label="Note" style="flex:1 1 140px;min-width:0">'}
+function runFields(v){v=v||{};var h='',m='',sc='';if(v.sec){h=Math.floor(v.sec/3600)||'';m=Math.floor(v.sec%3600/60);sc=Math.round((v.sec%60)*100)/100}
+  return '<input name="d" type="date" value="'+(v.date||today())+'" max="'+today()+'" required aria-label="Date"><input name="k" type="number" min="0.05" max="400" step="any" placeholder="'+rU()+'" value="'+(v.km?rKm(v.km):'')+'" required aria-label="Distance in '+(S.runUnit==='mi'?'miles':'kilometres')+'" style="width:90px"><span class="row" style="gap:4px"><input name="h" type="number" min="0" max="48" placeholder="h" value="'+h+'" aria-label="Hours" style="width:56px"><input name="m" type="number" min="0" max="59" placeholder="min" value="'+m+'" aria-label="Minutes" style="width:62px"><input name="s" type="number" min="0" max="59.99" step="0.01" placeholder="sec" value="'+sc+'" aria-label="Seconds" style="width:62px"></span><input name="n" type="text" maxlength="80" placeholder="Note (optional)" value="'+esc(v.note||'')+'" aria-label="Note" style="flex:1 1 140px;min-width:0">'}
 function doRun(o){
   var e=runCheck(o.d,o.km,o.sec);if(e){toast(e);return false}
-  var before=rPBs(),r={id:uid(),date:o.d,km:Math.round(o.km*1000)/1000,sec:Math.round(o.sec),note:o.note,t:Date.now()};
+  var before=rPBs(),r={id:uid(),date:o.d,km:Math.round(o.km*1000)/1000,sec:Math.round(o.sec*100)/100,note:o.note,t:Date.now()};
   S.runs.push(r);var after=rPBs(),c=after.flag[r.id],isPb=c&&after.best[c]&&after.best[c].id===r.id;
   save();render();
   if(isPb){var nm=PBD.filter(function(x){return x[0]===c})[0][1],old=before.best[c];beep(2);toast('New '+nm+' PB: '+rFmt(r.sec)+(old?' ('+rFmt(old.sec-r.sec)+' faster)':''))}else toast('Run logged.');
@@ -1056,9 +1059,9 @@ function paceChart(){
   var pc=rs.map(function(r){return r.sec/(r.km*rF())}),mn=Math.min.apply(null,pc),mx=Math.max.apply(null,pc),pd=Math.max((mx-mn)*0.15,5),lo=mn-pd,hi=mx+pd;
   var X=function(i){return 40+i*(250/(rs.length-1))},Y=function(v){return 10+(v-lo)/(hi-lo)*84};
   var pts=pc.map(function(v,i){return X(i).toFixed(1)+','+Y(v).toFixed(1)}).join(' ');
-  var dots=pc.map(function(v,i){return '<circle class="wd" cx="'+X(i).toFixed(1)+'" cy="'+Y(v).toFixed(1)+'" r="3"><title>'+parse(rs[i].date).toLocaleDateString('en-GB',{day:'numeric',month:'short'})+': '+rFmt(v)+' /'+rU()+'</title></circle>'}).join('');
+  var dots=pc.map(function(v,i){return '<circle class="wd" cx="'+X(i).toFixed(1)+'" cy="'+Y(v).toFixed(1)+'" r="3"><title>'+parse(rs[i].date).toLocaleDateString('en-GB',{day:'numeric',month:'short'})+': '+rFmtP(v)+' /'+rU()+'</title></circle>'}).join('');
   var sh=function(r){return parse(r.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'})};
-  return '<svg class="chart" viewBox="0 0 300 118" style="width:100%;max-width:560px;display:block" role="img" aria-label="Pace per run"><text x="34" y="'+(Y(mn)+3).toFixed(1)+'" style="text-anchor:end">'+rFmt(mn)+'</text><text x="34" y="'+(Y(mx)+3).toFixed(1)+'" style="text-anchor:end">'+rFmt(mx)+'</text><polyline class="wl" points="'+pts+'"/>'+dots+'<text x="40" y="114" style="text-anchor:start">'+sh(rs[0])+'</text><text x="290" y="114" style="text-anchor:end">'+sh(rs[rs.length-1])+'</text></svg><div class="hint">Pace per '+rU()+' over your last '+rs.length+' runs. Higher on the chart is slower.</div>';
+  return '<svg class="chart" viewBox="0 0 300 118" style="width:100%;max-width:560px;display:block" role="img" aria-label="Pace per run"><text x="34" y="'+(Y(mn)+3).toFixed(1)+'" style="text-anchor:end">'+rFmtP(mn)+'</text><text x="34" y="'+(Y(mx)+3).toFixed(1)+'" style="text-anchor:end">'+rFmtP(mx)+'</text><polyline class="wl" points="'+pts+'"/>'+dots+'<text x="40" y="114" style="text-anchor:start">'+sh(rs[0])+'</text><text x="290" y="114" style="text-anchor:end">'+sh(rs[rs.length-1])+'</text></svg><div class="hint">Pace per '+rU()+' over your last '+rs.length+' runs. Higher on the chart is slower.</div>';
 }
 V.run=function(){
   var pb=rPBs(),td=today(),ws=mondayOf(new Date()),wk=rWeekKm(ws),mo=td.slice(0,7),yr=td.slice(0,4),u=rU();
@@ -1069,14 +1072,14 @@ V.run=function(){
   var pbCards=PBD.map(function(d){var b=pb.best[d[0]];return T(d[1],b?rFmt(b.sec):'–',b?rPace(b.km,b.sec)+' · '+parse(b.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'No run logged yet',1)}).join('');
   var long=S.runs.reduce(function(m,r){return !m||r.km>m.km?r:m},null),fast=S.runs.filter(function(r){return r.km>=1}).reduce(function(m,r){return !m||r.sec/r.km<m.sec/m.km?r:m},null);
   var bestWeek=0,wm={};S.runs.forEach(function(r){var k=iso(mondayOf(parse(r.date)));wm[k]=(wm[k]||0)+r.km});for(var k in wm)bestWeek=Math.max(bestWeek,wm[k]);
-  var recs=T('Longest run',long?rKm(long.km)+' '+u:'–',long?rFmt(long.sec)+' · '+parse(long.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'',1)+
-   T('Fastest pace',fast?rFmt(fast.sec/(fast.km*rF())):'–',fast?'/'+u+' over '+rKm(fast.km)+' '+u:'Runs of 1 km or more',1)+
+  var recs=T('Longest run',long?rD(long.km):'–',long?rFmt(long.sec)+' · '+parse(long.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'',1)+
+   T('Fastest pace',fast?rFmtP(fast.sec/(fast.km*rF())):'–',fast?'/'+u+' over '+rKm(fast.km)+' '+u:'Runs of 1 km or more',1)+
    T('Best week',bestWeek?rKm(bestWeek)+' '+u:'–',bestWeek?'most in one week':'',1)+
    T('Run streak',streak+' wk'+(streak===1?'':'s'),streak?(wk?'weeks in a row with a run':'Run this week to keep it going'):'Run this week to start one',1);
   var wks=[],mx=0.001;for(var i=7;i>=0;i--){var w=addDays(ws,-7*i),v=rWeekKm(w);mx=Math.max(mx,v);wks.push({w:w,v:v})}
   var chart='<div class="rbars" role="img" aria-label="Distance per week, last 8 weeks">'+wks.map(function(x,i){return '<div class="rb"><span class="rv">'+(x.v?rKm(x.v):'')+'</span><span class="rbar'+(i===7?' cur':'')+'" style="height:'+Math.max(x.v/mx*100,x.v?4:1)+'%"></span><span class="rl">'+x.w.toLocaleDateString('en-GB',{day:'numeric',month:'numeric'})+'</span></div>'}).join('')+'</div>';
   var rows=rSorted().reverse().slice(0,30).map(function(r){var c=pb.flag[r.id],cur=c&&pb.best[c]&&pb.best[c].id===r.id,cn=c?PBD.filter(function(d){return d[0]===c})[0][1]:'',ed=ui.rEdit===r.id;
-    return '<li class="rrow" style="flex-wrap:wrap"><span class="mono muted rd">'+parse(r.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'})+'</span><span class="grow"><b>'+rKm(r.km)+' '+u+'</b> in <span class="mono">'+rFmt(r.sec)+'</span><div class="hint">'+rPace(r.km,r.sec)+(c?' <span class="tag pbtag'+(cur?' cur':'')+'">'+(cur?'PB ':'Was PB ')+cn+'</span>':'')+(r.note?' · '+esc(r.note):'')+'</div></span><button class="btn ghost sm" data-act="redit" data-id="'+r.id+'" aria-pressed="'+ed+'">'+(ed?'Close':'Edit')+'</button>'+delBtn('run',r.id)+
+    return '<li class="rrow" style="flex-wrap:wrap"><span class="mono muted rd">'+parse(r.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'})+'</span><span class="grow"><b>'+rD(r.km)+'</b> in <span class="mono">'+rFmt(r.sec)+'</span><div class="hint">'+rPace(r.km,r.sec)+(c?' <span class="tag pbtag'+(cur?' cur':'')+'">'+(cur?'PB ':'Was PB ')+cn+'</span>':'')+(r.note?' · '+esc(r.note):'')+'</div></span><button class="btn ghost sm" data-act="redit" data-id="'+r.id+'" aria-pressed="'+ed+'">'+(ed?'Close':'Edit')+'</button>'+delBtn('run',r.id)+
       (ed?'<form data-form="runedit" data-id="'+r.id+'" class="form" style="flex-basis:100%;margin-top:6px">'+runFields(r)+'<button class="btn" type="submit">Save</button></form>':'')+'</li>'}).join('');
   var unit='<button class="btn sm'+(u==='km'?'':' ghost')+'" data-act="rununit" data-u="km" aria-pressed="'+(u==='km')+'">km</button><button class="btn sm'+(u==='mi'?'':' ghost')+'" data-act="rununit" data-u="mi" aria-pressed="'+(u==='mi')+'">miles</button>';
   return head('Running','Log runs and track your personal bests',unit)+
@@ -1423,7 +1426,7 @@ var A={
  mtog:function(el){var n=exList()[+el.dataset.i],m=el.dataset.m,cur=exMus(n).slice(),ix=cur.indexOf(m);if(ix>=0)cur.splice(ix,1);else cur.push(m);S.exmus=S.exmus||{};S.exmus[n]=cur;save();render()},
  mauto:function(el){var n=exList()[+el.dataset.i];if(S.exmus)delete S.exmus[n];save();render()},
  musel:function(el){var m=el.dataset.m;ui.mSel=ui.mSel===m?null:m;render()},
- runpre:function(el){var i=document.querySelector('form[data-form=run] [name=k]');if(i){i.value=rKm(+el.dataset.k);i.focus()}},
+ runpre:function(el){var i=document.querySelector('form[data-form=run] [name=k]');if(i){i.value=+(+el.dataset.k*rF()).toFixed(4);i.focus()}},
  rununit:function(el){S.runUnit=el.dataset.u==='mi'?'mi':'km';save();render()},
  redit:function(el){ui.rEdit=ui.rEdit===el.dataset.id?null:el.dataset.id;render()},
  qaopen:function(){ui.qa={tab:ui.qaLast||'task'};qaRender()},
@@ -1542,7 +1545,7 @@ var F={
  mstep:function(){var n=$('#mn2').value.trim(),m=clamp($('#mm2').value,1,240);if(!n)return;S.morn.steps.push({id:uid(),name:n,min:m});save();render();var i=$('#mn2');if(i)i.focus()},
  exadd:function(){var v=$('#exnew').value.trim();if(!v)return;if(!exAdd(v)){toast('That exercise is already in the list.');return}save();render();var n=$('#exnew');if(n)n.focus()},
  run:function(f){doRun(runRead(f))},
- runedit:function(f){var r=S.runs.filter(function(x){return x.id===f.dataset.id})[0];if(!r)return;var o=runRead(f),e=runCheck(o.d,o.km,o.sec);if(e){toast(e);return}r.date=o.d;r.km=Math.round(o.km*1000)/1000;r.sec=Math.round(o.sec);r.note=o.note;ui.rEdit=null;save();render();toast('Run updated.')},
+ runedit:function(f){var r=S.runs.filter(function(x){return x.id===f.dataset.id})[0];if(!r)return;var o=runRead(f),e=runCheck(o.d,o.km,o.sec);if(e){toast(e);return}r.date=o.d;r.km=Math.round(o.km*1000)/1000;r.sec=Math.round(o.sec*100)/100;r.note=o.note;ui.rEdit=null;save();render();toast('Run updated.')},
  qarun:function(f){if(doRun(runRead(f)))qaClose()},
  qaweight:function(f){var v=num(f.querySelector('[name=v]').value);if(v<20||v>400){toast('Enter a weight between 20 and 400 kg.');return}S.weights[today()]=Math.round(v*10)/10;save();qaClose();render();toast('Weight logged.')},
  qatask:function(f){var q=function(n){return f.querySelector('[name='+n+']')},t=q('t').value.trim();if(!t)return;var k=iso(addDays(new Date(),+q('day').value||0));(S.plan[k]=S.plan[k]||[]).push({id:uid(),title:t,time:q('tm').value||'',dur:+q('d').value||0,done:false});save();qaClose();render();toast('Added to '+(k===today()?'today':'tomorrow')+'.')},
