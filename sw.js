@@ -1,6 +1,6 @@
 /* Network first: online you always get the newest version; offline you get the last saved copy.
    Supabase API calls are never touched. */
-const CACHE = 'cc-shell-v1';
+const CACHE = 'cc-shell-v2';
 const EXTRA_HOSTS = ['cdn.jsdelivr.net', 'unpkg.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 
 self.addEventListener('install', () => self.skipWaiting());
