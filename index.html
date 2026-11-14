@@ -7,11 +7,11 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0d1017">
-<meta name="apple-mobile-web-app-title" content="Command">
+<meta name="apple-mobile-web-app-title" content="Orbit">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" type="image/png" href="icons/icon-32.png">
-<title>Command Centre</title>
+<title>Orbit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -386,7 +386,7 @@ body.logmode main{padding-bottom:100px}
 </head>
 <body>
 <div class="top"><div class="top-in">
-  <div class="brandrow"><div class="brand">Command<i>/</i>Centre</div><div class="top-right"><div class="minit" id="mini" role="group" aria-label="Quick timer"></div><div class="clock" id="clock">--:--</div></div></div>
+  <div class="brandrow"><div class="brand">Orbit</div><div class="top-right"><div class="minit" id="mini" role="group" aria-label="Quick timer"></div><div class="clock" id="clock">--:--</div></div></div>
 </div></div>
 <div class="railbar" id="railbar"><div class="top-in"><nav class="rail" id="rail" aria-label="Modules"></nav></div></div>
 <div class="wrap"><main id="app"></main></div>
@@ -567,7 +567,7 @@ body.logmode main{padding-bottom:100px}
 })();
 </script>
 <script>
-/* Command Centre UI. Renders from one state object and never touches a backend directly. */
+/* Orbit UI. Renders from one state object and never touches a backend directly. */
 (function(){
 'use strict';
 if(!window.CCData){document.getElementById('app').innerHTML='<p style="padding:24px">No data adapter found. Load data-local.js (or your own adapter that defines window.CCData) before ui.js.</p>';return}
@@ -650,7 +650,7 @@ function skipLogin(){try{return localStorage.getItem('cc-skip-login')==='1'}catc
 function gated(){return !!D.auth&&(D.authReady===false||(!D.auth.user()&&!skipLogin()))}
 function loginPage(){
   var wait=D.authReady===false;
-  return '<div class="login"><div class="login-card"><div class="brand">Command<i>/</i>Centre</div>'+(wait?'<p class="muted" style="margin:0">Loading your account…</p>':
+  return '<div class="login"><div class="login-card"><div class="brand">Orbit</div>'+(wait?'<p class="muted" style="margin:0">Loading your account…</p>':
   '<h2>Sign in</h2><p class="muted" style="margin:0">Sign in to sync your dashboard across all your devices.</p>'+
   '<form data-form="auth" class="login-form"><label class="lab2" for="ae">Email</label><input id="ae" type="email" autocomplete="email" required><label class="lab2" for="ap">Password</label><input id="ap" type="password" autocomplete="current-password" minlength="6" required><div class="row"><button class="btn" type="submit" data-mode="in">Sign in</button><button class="btn ghost" type="submit" data-mode="up">Create account</button></div></form>'+
   '<div class="sync" id="syncline" role="status">'+(ui.sync&&ui.sync.indexOf('Signed out')!==0?esc(ui.sync):'')+'</div><button class="linkbtn" data-act="skiplogin">Continue without syncing</button>')+'</div></div>';
@@ -670,7 +670,7 @@ function isStandalone(){return (window.matchMedia&&matchMedia('(display-mode: st
 function installPanel(){
   if(isStandalone())return '';
   var ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
-  var body=deferredInstall?'<p style="margin:0 0 12px">Add Command Centre to your home screen or desktop. It opens in its own window and still opens without a connection.</p><button class="btn" data-act="install">Install app</button>'
+  var body=deferredInstall?'<p style="margin:0 0 12px">Add Orbit to your home screen or desktop. It opens in its own window and still opens without a connection.</p><button class="btn" data-act="install">Install app</button>'
    :ios?'<p class="muted" style="margin:0">On iPhone or iPad, tap the Share button in Safari, then choose Add to Home Screen.</p>'
    :'<p class="muted" style="margin:0">Open your browser menu and choose Install app (Chrome, Edge) or Add to Home screen (Android). If the option is missing, reload the page once and try again.</p>';
   return '<div class="panel"><h3>Install app</h3>'+body+'</div>';
@@ -1860,7 +1860,7 @@ setInterval(miniTick,250);
 
 /* ---------- timer ---------- */
 function setMode(m){var t=ui.t;t.mode=m;t.running=false;t.remaining=S.focusCfg[m]*60;render()}
-function paintTimer(){var t=ui.t,e=$('#tdisp');var s=t.running?(t.end-Date.now())/1000:t.remaining;if(e)e.textContent=fmtT(s);document.title=t.running?fmtT(s)+' · Command Centre':'Command Centre'}
+function paintTimer(){var t=ui.t,e=$('#tdisp');var s=t.running?(t.end-Date.now())/1000:t.remaining;if(e)e.textContent=fmtT(s);document.title=t.running?fmtT(s)+' · Orbit':'Orbit'}
 var audio=null;
 function beep(n){try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();var o=audio.createOscillator(),g=audio.createGain();o.frequency.value=n?880:440;g.gain.value=n?.15:.0001;o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+(n?.5:.01))}catch(e){}}
 setInterval(function(){

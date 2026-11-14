@@ -1,6 +1,6 @@
 {
-  "name": "Command Centre",
-  "short_name": "Command",
+  "name": "Orbit",
+  "short_name": "Orbit",
   "description": "Habits, calendar, projects, gym, daily planner, books, notes and focus timer, synced across your devices.",
   "start_url": "./",
   "scope": "./",
